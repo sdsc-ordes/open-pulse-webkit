@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -fsS http://openpulse.epfl.ch:7503/*)",
+      "Bash(curl -fsS http://openpulse.epfl.ch:7502/*)",
+      "Bash(curl -fsSk https://openpulse.epfl.ch:9200/*)",
+      "Bash(curl -fsS -u * http://openpulse.epfl.ch:7503/*)",
+      "Bash(curl -fsS -u * http://openpulse.epfl.ch:7502/*)",
+      "Bash(curl -fsSk -u * https://openpulse.epfl.ch:9200/*)"
+    ]
+  },
+  "enabledMcpjsonServers": ["playwright"]
+}

@@ -1,0 +1,37 @@
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: tools/docker/web/Dockerfile
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    environment:
+      # Generic dev proxy settings. Add any framework-specific env your app
+      # needs (e.g. bind host 0.0.0.0 for the dev server inside the container).
+      API_BASE_URL: /api/v1
+      API_PROXY_TARGET: http://mock-backend:8000
+    depends_on:
+      mock-backend:
+        condition: service_healthy
+    networks:
+      - openpulse
+
+  mock-backend:
+    build:
+      context: ..
+      dockerfile: tools/docker/mock-unified-backend/Dockerfile
+    ports:
+      - "8001:8000"
+    networks:
+      - openpulse
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+networks:
+  openpulse:
+    driver: bridge
