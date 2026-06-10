@@ -104,7 +104,7 @@ Neo4j, never OpenSearch.
 - **Owner→repos for several orgs at once**: `MATCH (o:Org)-[:OWNS]->(r:Repo) WHERE o.login IN $logins RETURN o.login, r.full_name` — the basis for org-scoped catalogs.
 - **PR/issue/review/comment metrics**: always come from the edge types above. Count `DISTINCT u` for "people" and `count(*)` for "events"; there is no event date to bucket by.
 - **`DEPENDS_ON` is large** (~259k). Always scope it to a seed set (`WHERE r.full_name IN $urls`) and add `LIMIT`, or it returns the whole ecosystem.
-- **Affiliations**: `(:User)-[:AFFILIATED_WITH]->(:RorOrg)` mirrors the SPARQL `org:hasMembership` data; institutions are ROR-identified in both stores.
+- **Affiliations**: `(:User)-[:AFFILIATED_WITH]->(:RorOrg)` mirrors the SPARQL `org:hasMembership` data (default graph or `GRAPH <…/graph/{YYYY-MM}/hybrid>`); institutions are ROR-identified in both stores. See `query-sparql` for default vs named-graph modes.
 
 ## Conventions
 

@@ -81,11 +81,11 @@ quest:
       skip_existing: true                         # don't re-process repos already done
       max_repos: 0                                # 0 = no cap
     neo4j_upload:           { enabled: false }    # loads crawler graph → Neo4j (input_dir/input_filename)
-    sparql_upload:          { enabled: false }    # uploads extracted RDF → Oxigraph
+    sparql_upload:          { enabled: false }    # uploads extracted RDF → Oxigraph named graph (…/graph/{YYYY-MM}/hybrid)
     apply_grimoire_projects: { enabled: false }
 ```
 
-To run a GME-only pass: enable just `metadata_extractor` (point `input_dir` at a crawl's output), then usually `sparql_upload` to land the triples. A full ingest enables `crawler` → `metadata_extractor` → `neo4j_upload` + `sparql_upload`.
+To run a GME-only pass: enable just `metadata_extractor` (point `input_dir` at a crawl's output), then usually `sparql_upload` to land the triples into the Oxigraph named graph for that snapshot (`https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid`). A full ingest enables `crawler` → `metadata_extractor` → `neo4j_upload` + `sparql_upload`. After upload, confirm the graph size via `op-collections stats` → `sparql.named_graphs`.
 
 ## Run status fields
 

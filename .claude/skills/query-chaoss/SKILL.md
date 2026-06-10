@@ -211,7 +211,7 @@ A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggreg
 
 ## Live state (verified 2026-06-10)
 
-- The hub serves the **2026-05 snapshot**. The newest signals (`test_coverage`, `release_frequency`) and the issue/PR-based metrics (`first_response`, `cr_*`, `issues_*`) read `"—"` for most repos until a fresh re-extraction lands — **expect them sparse**.
+- The hub serves the **2026-05 snapshot**. SPARQL traces in `--include traces` query `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid>` (see `query-sparql` named-graph convention). The newest signals (`test_coverage`, `release_frequency`) and the issue/PR-based metrics (`first_response`, `cr_*`, `issues_*`) read `"—"` for most repos until a fresh re-extraction lands — **expect them sparse**.
 - Repos are **GitHub-only**: `repo <owner> <repo>` → `/repositories/github.com/...`.
 - Projects are discipline/topic buckets of repos. **The set and count change over time, so always read it from `projects` — never hardcode a number.** At time of writing the largest are `info-eng` (~109 repos), `bioeng` (~95), `stats` (~63), with domain-relevant ones like `protein_ai_ecosystem` (~26), `bio` (~42), `chem` (~10). Use the exact `project` slug returned by `projects` (e.g. `protein_ai_ecosystem`, not `protein-ai`). `project-repos <project>` returns the project header plus both a `metrics[]` summary and a `repositories[]` list.
 - A browsable UI to explore first: `https://openpulse.epfl.ch/chaoss` (same auth).

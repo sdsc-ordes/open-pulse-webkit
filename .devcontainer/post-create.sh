@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Post-create: web app deps + Claude config volume ownership.
-# Auth persistence: https://code.claude.com/docs/en/devcontainer#persist-authentication-and-settings-across-rebuilds
+# Post-create: web app deps, Claude config volume, Playwright MCP config for docker.
 set -euo pipefail
 
 NODE_HOME="/home/node"
@@ -12,8 +11,10 @@ chown -R node:node "${CLAUDE_DIR}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Playwright MCP: point .mcp.json at the sidecar (stdio npx won't find Chromium here).
+bash "${REPO_ROOT}/tools/image/docker/setup-mcp.sh" docker
+
 # The web app lives in src/your-web (scaffold it with your framework of choice).
-# Only install if it has been scaffolded with a package.json.
 APP_DIR="${REPO_ROOT}/src/your-web"
 if [ -f "${APP_DIR}/package.json" ]; then
   echo "Installing web app dependencies..."

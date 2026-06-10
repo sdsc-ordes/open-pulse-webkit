@@ -79,6 +79,20 @@ Output is JSON (pretty-printed); `export` always streams the raw body so you can
 
 Each row payload includes `db_path`, `table`, and `columns` so you can see the schema before filtering. `cstats` exposes `search.columns` (what `--q` matches) and `search.examples`.
 
+## Oxigraph named graphs (`stats` → `sparql`)
+
+The `sparql` block lists every named graph Oxigraph holds — authoritative sizes before writing SPARQL:
+
+```json
+"named_graphs": [
+  { "uri": "https://open-pulse.epfl.ch/graph/2026-05/hybrid", "triples": 2453125 },
+  { "uri": "https://open-pulse.epfl.ch/graph/2026-06/hybrid", "triples": 328691 },
+  …
+]
+```
+
+**Convention:** production data lives in `https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid` and is also exposed as Oxigraph's **default graph** — plain `{ ?s ?p ?o }` queries work without a `GRAPH` clause. Use explicit `GRAPH <…>` to pin a snapshot or reach utility graphs (`_backup/…`, `_links/identity`). Full modes and gotchas: `query-sparql` skill.
+
 ## Notes
 
 - This is a **separate store** from the three query-* skills: the collections are the hub's curated DuckDB indices, not Neo4j/SPARQL/OpenSearch. Use `stats` to see all four side by side (`sparql`, neo4j, `opensearch`, `duckdb` blocks).

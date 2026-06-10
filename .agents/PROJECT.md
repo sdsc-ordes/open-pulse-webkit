@@ -44,8 +44,9 @@ When wiring data or running query skills, use `openpulse.epfl.ch`. When citing t
 ### Oxigraph (SPARQL) — RDF metadata
 
 - **Endpoint:** `:7502`, behind a Caddy proxy that terminates HTTP-Basic auth (`/query` for reads, `/update` for writes)
-- **Contents:** ~300k triples across multiple named graphs (e.g. `http://open-pulse/repos`, `http://open-pulse/metadata`)
-- **Use it for:** Structured metadata, vocabulary/ontology queries, anything that benefits from `SELECT … WHERE { GRAPH ?g { … } }`
+- **Contents:** ~2.45M triples in the current production snapshot (`https://open-pulse.epfl.ch/graph/2026-05/hybrid`), plus utility graphs (`_backup/…`, `_links/identity`) and in-progress snapshots (`2026-06/hybrid`, …). **Default graph mode** — plain `{ ?s ?p ?o }` without a `GRAPH` clause — resolves to that production snapshot. Use explicit `GRAPH <…>` to pin a snapshot or reach non-default graphs. See `query-sparql` skill.
+- **Named-graph convention:** production snapshots live at `https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid`; pipeline `sparql_upload` promotes the current month into both the named graph and the default graph. Inventory: `op-collections stats` → `sparql.named_graphs`.
+- **Use it for:** Structured metadata, vocabulary/ontology queries, repo stars/licenses/languages, contributions, ORCID↔GitHub bridges, scholarly articles
 - **Skill:** `query-sparql` (SELECT/ASK/CONSTRUCT/DESCRIBE). Updates are intentionally not supported by the skill — use `curl` explicitly if you need to mutate.
 
 ### OpenSearch — search & enriched indices
@@ -162,4 +163,4 @@ If a change makes one of these journeys harder (e.g. couples the design system t
 - **Data store query skills**: `.agents/skills/query-{neo4j,sparql,opensearch}/SKILL.md`
 - **CHAOSS health metrics**: `.agents/skills/query-chaoss/SKILL.md` (featured dashboard slugs above)
 - **Publishing**: README → *Publishing to GitHub Pages*
-- **Devcontainer**: `.devcontainer/`
+- **Devcontainer**: `.devcontainer/` (compose + images in `tools/image/docker/`)

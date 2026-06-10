@@ -82,7 +82,7 @@ when matching.
 | `repo_name` | clone URL + `.git` (keyword; use directly in `terms`) |
 | `author_uuid` / `Author_uuid` | stable author identity (use for `cardinality`/`terms`) |
 | `author_name` | display name |
-| `author_org_name` | **almost always `"Unknown"`** — affiliation NOT resolved here; get orgs from SPARQL/Neo4j instead |
+| `author_org_name` | **almost always `"Unknown"`** — affiliation NOT resolved here; get orgs from SPARQL (default graph or named graph — see `query-sparql`) or Neo4j instead |
 | `grimoire_creation_date` | canonical commit timestamp (use for `date_histogram`, min/max) |
 | `author_date`, `commit_date` | raw git dates |
 | `lines_added`, `lines_removed`, `lines_changed`, `files` | churn (`sum`-able) |

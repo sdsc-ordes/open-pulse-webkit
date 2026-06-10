@@ -34,17 +34,52 @@ node .agents/skills/query-sparql/query.mjs -f query.rq
 
 For `SELECT` the script flattens the SPARQL JSON Results envelope to a plain `[{var: value}, ...]` array. For `ASK`, `CONSTRUCT`, `DESCRIBE`, or any non-`json` accept, the response is passed through.
 
-## Live graph state (verified 2026-06-05)
+## Default graph vs named graphs (verified 2026-06-10)
 
-The data you want is in **one big named graph** — always wrap patterns in it:
+Oxigraph holds production RDF in **named graphs**, but the hub also configures a **default graph** so plain SPARQL (no `GRAPH` clause) works.
 
+### Two query modes
+
+| Mode | Syntax | When to use |
+|---|---|---|
+| **Default graph** | `{ ?s ?p ?o }` — no `GRAPH` wrapper | Most ad-hoc queries. Oxigraph resolves this to the **current production snapshot** (~2.45M triples today, same data as `…/graph/2026-05/hybrid`). |
+| **Named graph** | `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { … }` | Pin a specific snapshot, query utility graphs, or compare graphs side by side. Required for `_backup/…`, `_links/identity`, or in-progress `2026-06/hybrid`. |
+
+```sparql
+# Default graph mode — fine for everyday repo/metadata lookups
+SELECT ?name WHERE {
+  <https://github.com/biopython/biopython> schema:name ?name .
+}
+
+# Named graph mode — pin a snapshot or reach non-default graphs
+SELECT ?name WHERE {
+  GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> {
+    <https://github.com/biopython/biopython> schema:name ?name .
+  }
+}
 ```
-GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { ... }   # ~2.12M triples
-```
 
-Other graphs: a small per-study `…/graph/authors/protein-ai` (~1.1k), plus a
-default (unnamed) graph. Querying without the `GRAPH` wrapper across everything
-is slow and mixes studies — scope to the hybrid graph.
+Default mode does **not** union every named graph — backups and in-progress snapshots are invisible unless you name them explicitly.
+
+### Named-graph IRI pattern
+
+| Kind | Pattern | Example |
+|---|---|---|
+| **Production snapshot** | `https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid` | `…/graph/2026-05/hybrid` |
+| **Utility / backup** | `https://open-pulse.epfl.ch/graph/_…` | `…/_backup/2026-05-hybrid-prenorm`, `…/_links/identity` |
+
+Pipeline `sparql_upload` (op-extractor) lands triples in the named graph for that month; the hub also promotes the current snapshot into the default graph. CHAOSS SPARQL traces may use either form.
+
+### Current named graphs (live)
+
+| Named graph | Triples | Role |
+|---|---|---|
+| `https://open-pulse.epfl.ch/graph/2026-05/hybrid` | ~2.45M | **Current production snapshot** — also what default-graph queries see |
+| `https://open-pulse.epfl.ch/graph/_backup/2026-05-hybrid-prenorm` | ~2.12M | Pre-normalisation backup — named graph only |
+| `https://open-pulse.epfl.ch/graph/2026-06/hybrid` | ~329k | In-progress next snapshot — named graph only |
+| `https://open-pulse.epfl.ch/graph/_links/identity` | ~204 | Cross-store identity links — named graph only |
+
+Refresh sizes: `python .agents/skills/op-collections/query.py stats` → `sparql.named_graphs`, or the inventory query below.
 
 ## Prefixes used in this graph
 
@@ -94,10 +129,11 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 
 | Goal | SPARQL |
 |---|---|
-| Total triple count | `SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }` |
 | Named graphs + sizes | `SELECT ?g (COUNT(*) AS ?n) WHERE { GRAPH ?g { ?s ?p ?o } } GROUP BY ?g ORDER BY DESC(?n)` |
-| Predicates on a repo | `SELECT DISTINCT ?p WHERE { GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { <https://github.com/biopython/biopython> ?p ?o } }` |
-| Stars/forks for repos | `… { VALUES ?r { <…/repo1> <…/repo2> } ?r op:githubRepoStars ?s ; op:githubRepoForks ?f }` |
+| Triple count (default graph) | `SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }` |
+| Triple count (named graph) | `SELECT (COUNT(*) AS ?n) WHERE { GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { ?s ?p ?o } }` |
+| Predicates on a repo | `SELECT DISTINCT ?p WHERE { <https://github.com/biopython/biopython> ?p ?o }` |
+| Stars/forks for repos | `{ VALUES ?r { <…/repo1> <…/repo2> } ?r op:githubRepoStars ?s ; op:githubRepoForks ?f }` |
 
 ## Gotchas learned the hard way
 
@@ -107,7 +143,7 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 
 ## Conventions
 
-- Always include `LIMIT` on exploratory queries, and wrap in the hybrid `GRAPH`.
+- Always include `LIMIT` on exploratory queries. **Default graph mode** (`{ … }` without `GRAPH`) is fine for the current production snapshot; use an explicit `GRAPH <https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid>` when you need a specific snapshot or a non-default graph.
 - Updates require `SPARQL_AUTH` admin role and are destructive — never run them unless the user explicitly asks. Use curl, not these scripts.
 - Oxigraph default response is SPARQL XML; the scripts always set `Accept` explicitly.
 - A 504 from the proxy means the query timed out — reduce the result set, tighten the pattern, or switch to fetch-and-join.

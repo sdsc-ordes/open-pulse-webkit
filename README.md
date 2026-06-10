@@ -28,8 +28,8 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 | 🧠 **Agent skills** | 9 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
 | 🎨 **Design system** | A dark-mode SDSC visual identity the `frontend-dev` skill enforces, so generated UI looks on-brand | `frontend-dev` skill |
-| 🐳 **Devcontainer** | A reproducible dev environment (VS Code / Codespaces) | `.devcontainer/` |
-| 🧪 **Playwright MCP** | Lets the agent open the running app in a real browser and screenshot it to verify UI changes | `.mcp.json` |
+| 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
+| 🧪 **Playwright MCP** | Browser verification for agents — host (`npx`) or devcontainer (sidecar on `:8931`) | `.mcp.host.json` / `.mcp.docker.json` → `.mcp.json` |
 | 🔑 **Env template** | Documents the Open Pulse endpoints and credentials your skills need | `.env.example` |
 
 ---
@@ -65,6 +65,24 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
    ```
 
 > **Bring your own framework.** This template doesn't prescribe a UI stack — the app lives in `src/your-web/` and you build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, …). What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
+
+### Devcontainer & Playwright MCP
+
+Open in VS Code / Codespaces with the **Dev Containers** extension — `.devcontainer/devcontainer.json` points at `tools/image/docker/docker-compose.yml`:
+
+| Service | Image | Role |
+|---|---|---|
+| `web` | Ubuntu 24.04 + Node 22 + Python 3 | Dev workspace (skills, scaffolding) |
+| `playwright-mcp` | `mcr.microsoft.com/playwright/mcp` | Headless Chromium for UI verification |
+
+On first create, `post-create` copies `.mcp.docker.json` → `.mcp.json` so agents talk to the sidecar at `http://localhost:8931/mcp`.
+
+**On the host** (no container), `.mcp.json` defaults to `.mcp.host.json` (stdio `npx`). Install Chromium once:
+
+```bash
+npx playwright install chromium
+bash tools/image/docker/setup-mcp.sh host   # only if .mcp.json was switched by a prior devcontainer session
+```
 
 ---
 
@@ -105,10 +123,13 @@ open-pulse-webkit/
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── CLAUDE.md           # repo conventions (canonical)
 ├── AGENTS.md           # generated mirror of CLAUDE.md
-├── .mcp.json           # Playwright MCP server (UI verification)
-├── .devcontainer/      # reproducible dev environment
+├── .mcp.json           # active Playwright MCP config (host default)
+├── .mcp.host.json      # host: stdio npx
+├── .mcp.docker.json    # devcontainer: HTTP sidecar on :8931
+├── .devcontainer/      # devcontainer entry (compose in tools/image/docker/)
 ├── .env.example        # Open Pulse endpoints + credentials
 ├── tools/
+│   ├── image/docker/   # Dockerfile, compose, setup-mcp.sh
 │   └── sync-agents.mjs # regenerates .agents/ from .claude/
 └── src/
     └── your-web/       # ← your web app, any framework (see status)
@@ -172,7 +193,7 @@ The app is designed to be published as a **static site on GitHub Pages** — no 
 
 ## Status
 
-This template is **under construction**. What's ready today: the agent toolkit (skills + docs), the dual-runtime sync, the devcontainer, and the env/MCP scaffolding. The web app in `src/your-web/` is **not yet scaffolded** — that's the next milestone, and it's framework-agnostic (you choose the stack). The docs describe the intended structure so the agent (and you) can build toward it.
+This template is **under construction**. What's ready today: the agent toolkit (skills + docs), the dual-runtime sync, the devcontainer (Ubuntu + Playwright sidecar), and the env/MCP scaffolding. The web app in `src/your-web/` is **not yet scaffolded** — that's the next milestone, and it's framework-agnostic (you choose the stack). The docs describe the intended structure so the agent (and you) can build toward it.
 
 ---
 

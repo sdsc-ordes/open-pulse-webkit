@@ -65,7 +65,14 @@ If your stack has a type/lint check, run it before every commit; CI runs it on e
 
 ## UI verification — REQUIRED for frontend work
 
-This repo ships an MCP-server config for **Playwright MCP** (`@playwright/mcp`) in `.mcp.json` at the repo root, enabled via `.claude/settings.json` (`enabledMcpjsonServers: ["playwright"]`). It is port-locked to the local dev/preview servers.
+This repo ships **Playwright MCP** (`@playwright/mcp`) for UI verification, enabled via `.claude/settings.json` (`enabledMcpjsonServers: ["playwright"]`). Config is port-locked to the local dev/preview servers (`5173`, `4173`).
+
+| Runtime | Active config | How it runs |
+|---|---|---|
+| **Host** (native) | `.mcp.json` ← `.mcp.host.json` | `npx @playwright/mcp` (stdio). Run `npx playwright install chromium` once. |
+| **Devcontainer** | `.mcp.json` ← `.mcp.docker.json` | HTTP to the `playwright-mcp` sidecar at `http://localhost:8931/mcp` (set automatically in `post-create`). |
+
+Switch manually: `bash tools/image/docker/setup-mcp.sh host` or `… docker`. Canonical templates: `.mcp.host.json`, `.mcp.docker.json`.
 
 **Rules for any change that touches UI, routes, CSS tokens, or visual behaviour:**
 
@@ -90,10 +97,11 @@ open-pulse-webkit/
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── CLAUDE.md           # this file (canonical conventions)
 ├── AGENTS.md           # generated mirror of CLAUDE.md
-├── .mcp.json           # Playwright MCP server (UI verification)
-├── .devcontainer/      # reproducible dev environment
+├── .mcp.json           # Playwright MCP (active; host default — see .mcp.host.json / .mcp.docker.json)
+├── .devcontainer/      # devcontainer entry (compose lives in tools/image/docker/)
 ├── .env.example        # Open Pulse endpoints + credentials
 ├── tools/
+│   ├── image/docker/   # Ubuntu dev image + playwright-mcp sidecar compose
 │   └── sync-agents.mjs # regenerates .agents/ from .claude/
 └── src/
     └── your-web/       # ← your web app (scaffold it here)
@@ -108,7 +116,7 @@ open-pulse-webkit/
 | Store | What's in it | How to query |
 |---|---|---|
 | **Neo4j** (`:7503` HTTP, `:7504` Bolt) | Property graph: repositories, contributors, commits, organisations, PRs | Skill `query-neo4j` |
-| **Oxigraph / SPARQL** (`:7502`, Caddy basic-auth) | RDF metadata graph (~300k triples) | Skill `query-sparql` |
+| **Oxigraph / SPARQL** (`:7502`, Caddy basic-auth) | RDF metadata (~2.45M triples); default-graph or named-graph (`…/graph/{YYYY-MM}/hybrid`) queries | Skill `query-sparql` |
 | **OpenSearch** (`:9200`, self-signed TLS) | GrimoireLab-enriched docs | Skill `query-opensearch` |
 
 There are also higher-level hub skills (`op-collections`, `op-search`, `query-chaoss`, `op-crawler`, `op-extractor`). See `.claude/SKILLS.md` and each skill's `SKILL.md`.
