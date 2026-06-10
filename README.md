@@ -19,6 +19,26 @@
 
 You don't need to learn the Open Pulse APIs. You describe the dashboard; the agent uses the skills to fetch real data and wires up the UI.
 
+### Data stores (via agent skills)
+
+| Store | Port | Skill | Good for |
+|---|---|---|---|
+| **Neo4j** (property graph) | `:7503` / `:7504` | `query-neo4j` | Contributors, commits, orgs, `DEPENDS_ON` edges |
+| **Oxigraph** (SPARQL / RDF) | `:7502` | `query-sparql` | Repo metadata, licenses, languages, ORCID↔GitHub, publications |
+| **OpenSearch** (GrimoireLab) | `:7508` | `query-opensearch` | Commits, issues, PRs, enriched GitHub activity |
+| **CHAOSS metrics** (computed) | hub HTTPS | `query-chaoss` | Ready-made health / popularity / quality cards |
+| **Collections** (DuckDB indices) | hub HTTPS | `op-collections` | Indexed source tables (GitHub, Zenodo, ORCID, …) |
+| **Semantic search** (RAG) | hub HTTPS | `op-search` | Find-by-meaning across sources |
+
+Credentials stay server-side — copy `.env.example` → `.env` and never expose them to the browser. See `CLAUDE.md` for the server-proxy pattern on GitHub Pages.
+
+**Oxigraph — default graph or named graph.** Production RDF (~2.45M triples) is available two ways:
+
+- **Default graph** — plain SPARQL, no `GRAPH` clause: `{ ?repo schema:name ?name }`. Oxigraph resolves this to the current production snapshot.
+- **Named graph** — explicit IRI: `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { … }`. Use this to pin a snapshot or query utility graphs (`_backup/…`, `_links/identity`).
+
+List graphs and sizes: `python .claude/skills/op-collections/query.py stats` → `sparql.named_graphs`. Full reference: `.claude/skills/query-sparql/SKILL.md`.
+
 ---
 
 ## What's in the box
@@ -57,6 +77,18 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
    > *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
 
    The agent will use the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
+
+   Example skill calls you can run yourself after filling in `.env`:
+
+   ```bash
+   # SPARQL — default graph mode
+   python .claude/skills/query-sparql/query.py \
+     'PREFIX schema: <http://schema.org/> SELECT ?name WHERE { <https://github.com/biopython/biopython> schema:name ?name }'
+
+   # Cross-store inventory (includes Oxigraph named graphs)
+   python .claude/skills/op-collections/query.py stats
+   ```
+
 4. Run the app locally (once it's scaffolded — see status below):
    ```bash
    cd src/your-web
@@ -188,6 +220,8 @@ The app is designed to be published as a **static site on GitHub Pages** — no 
 - **Editing agent config:** edit `.claude/` only, then run `node tools/sync-agents.mjs` to regenerate `.agents/` + `AGENTS.md`. The `agents-sync` CI job fails if they drift.
 - **Node on PATH:** the sync script needs Node; if `node` isn't on your PATH, call it with a full path to a local Node binary. CI uses its own Node.
 - **Never commit `.env`** — it holds Open Pulse credentials. Only `.env.example` is tracked.
+- **MCP config:** `.mcp.json` is the active Playwright config (host default). Templates: `.mcp.host.json` (stdio `npx`), `.mcp.docker.json` (sidecar URL). Switch with `bash tools/image/docker/setup-mcp.sh host|docker`.
+- **Deeper context:** `.claude/PROJECT.md` (mission, URLs, CHAOSS dashboard, SPARQL graphs), `.claude/SKILLS.md` (task recipes).
 
 ---
 
