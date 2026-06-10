@@ -1,0 +1,36 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: sleep infinity
+    depends_on:
+      playwright-mcp:
+        condition: service_started
+    networks:
+      - pulsewebkit
+
+  playwright-mcp:
+    image: mcr.microsoft.com/playwright/mcp
+    init: true
+    ports:
+      - "8931:8931"
+    command:
+      - node
+      - cli.js
+      - --headless
+      - --browser
+      - chromium
+      - --no-sandbox
+      - --port
+      - "8931"
+      - --host
+      - "0.0.0.0"
+      - --allowed-origins
+      - "http://localhost:5173;http://localhost:4173;http://127.0.0.1:5173;http://127.0.0.1:4173"
+    networks:
+      - pulsewebkit
+
+networks:
+  pulsewebkit:
+    driver: bridge
