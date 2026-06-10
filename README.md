@@ -1,12 +1,19 @@
 # pulseWebKit
 
-**A starter template for building interactive dashboards on top of [Open Pulse](https://openpulse.epfl.ch) — with an AI coding agent doing most of the work.**
+**A starter template for building interactive dashboards on top of [Open Pulse](https://openpulse.science) — with an AI coding agent doing most of the work.**
 
 ---
 
 ## What is this?
 
-[Open Pulse](https://openpulse.epfl.ch) is a research-software-observability platform maintained by the Swiss Data Science Center (SDSC). It holds data about research code — repositories, contributors, commits, organisations, publications — across three databases (a graph, an RDF triplestore, and a search index).
+[Open Pulse](https://openpulse.science) is a research-software-observability platform maintained by the Swiss Data Science Center (SDSC). It holds data about research code — repositories, contributors, commits, organisations, publications — across three databases (a graph, an RDF triplestore, and a search index), plus higher-level APIs for health metrics, semantic search, and indexed collections.
+
+**Two URLs — different jobs:**
+
+| URL | Role |
+|---|---|
+| **[openpulse.science](https://openpulse.science)** | The project's **main public page** — documentation, marketing, ontology namespaces. Downstream apps built from this template link here in the required attribution bar. |
+| **[openpulse.epfl.ch](https://openpulse.epfl.ch)** | The **first live deployment node** — where Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API, collections, extractor, and crawler run. Skills and `.env` point here. |
 
 **pulseWebKit is the easiest way to build your own view on top of that data.** Click *"Use this template"*, open the repo in your AI coding agent of choice, and ask it to build the dashboard you want. The agent already knows how to talk to Open Pulse, because this repo ships a set of **skills** — small, documented helpers that let the agent query each data store safely.
 
@@ -18,7 +25,7 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 
 | | What it is | Where |
 |---|---|---|
-| 🧠 **Agent skills** | 9 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, CHAOSS health metrics, the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🧠 **Agent skills** | 9 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
 | 🎨 **Design system** | A dark-mode SDSC visual identity the `frontend-dev` skill enforces, so generated UI looks on-brand | `frontend-dev` skill |
 | 🐳 **Devcontainer** | A reproducible dev environment (VS Code / Codespaces) | `.devcontainer/` |
@@ -47,9 +54,9 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
    cp .env.example .env
    ```
 3. Open the repo in your agent and ask it to build something, e.g.
-   > *"Add a page that shows the top 10 most-active repositories this month."*
+   > *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
 
-   The agent will use the `query-*` skills to pull real data and the `frontend-dev` skill to build the UI on-brand.
+   The agent will use the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
 4. Run the app locally (once it's scaffolded — see status below):
    ```bash
    cd src/your-web
@@ -61,12 +68,37 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 
 ---
 
+## CHAOSS health metrics (featured dashboard)
+
+The hub at `openpulse.epfl.ch` computes **35 CHAOSS metrics** live per GitHub repository (or aggregated per GrimoireLab project) by unifying the three stores. Browse them at [openpulse.epfl.ch/chaoss](https://openpulse.epfl.ch/chaoss); query them via the `query-chaoss` skill. Full API detail is in `.claude/skills/query-chaoss/SKILL.md` and `.claude/PROJECT.md`.
+
+This template is designed around a **featured dashboard set** across three buckets:
+
+**Community** — *is the project alive & kicking?*
+Activity dates, contributors, change-request closure ratio, issue/PR response times, change-request reviews, new contributors, merged change requests, organizational diversity, committers, contributor absence factor (bus factor).
+
+**Popularity** — *who sees, uses & reuses it?*
+Academic impact, project popularity, technical forks. *(Clones, package downloads, job-posting demand, and recommendability scores are not in the API yet.)*
+
+**Quality** — *can others understand & reuse it?*
+Documentation discoverability, license coverage, licenses declared, programming languages, release frequency, test coverage, upstream code dependencies.
+
+```bash
+# All 35 metrics for one repo
+python .claude/skills/query-chaoss/query.py repo sdsc-ordes gimie
+
+# One metric, custom window
+python .claude/skills/query-chaoss/query.py repo sdsc-ordes gimie closure_ratio --window 30
+```
+
+---
+
 ## Repository layout
 
 ```
 open-pulse-webkit/
 ├── .claude/            # canonical agent config (EDIT HERE)
-│   ├── PROJECT.md      #   mission + data-source overview
+│   ├── PROJECT.md      #   mission, URLs, data sources + CHAOSS dashboard
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
 │   └── skills/         #   the 9 skills

@@ -1,6 +1,6 @@
 ---
 name: query-chaoss
-description: Query the Open Pulse CHAOSS Metrics API — 35 community/popularity/quality metrics computed live per GitHub repository or per GrimoireLab project, over the Neo4j+SPARQL+OpenSearch stores. TRIGGER when the user asks for a ready-made health/community/popularity/quality metric on a repo or project (contributors, bus/absence factor, first-response time, issue/PR throughput, license coverage, release frequency, academic impact, etc.), or asks to browse the metric catalogue. SKIP when they want a raw Cypher/SPARQL/DSL query against a single store (use query-neo4j / query-sparql / query-opensearch) rather than a pre-computed CHAOSS metric.
+description: Query the Open Pulse CHAOSS Metrics API — 35 community/popularity/quality metrics computed live per GitHub repository or per GrimoireLab project, over the Neo4j+SPARQL+OpenSearch stores. TRIGGER when the user asks for a ready-made health/community/popularity/quality metric on a repo or project — especially the featured dashboard set (activity dates, contributors, closure ratio, issue/PR response times, change-request reviews, new contributors, org diversity, committers, absence factor, academic impact, forks, popularity, docs discoverability, license coverage, programming languages, release frequency, test coverage, upstream dependencies). SKIP when they want a raw Cypher/SPARQL/DSL query against a single store (use query-neo4j / query-sparql / query-opensearch) rather than a pre-computed CHAOSS metric.
 ---
 
 # Query CHAOSS Metrics (Open Pulse hub)
@@ -56,78 +56,160 @@ Output is the API's JSON, pretty-printed. `--raw` prints the body verbatim. Erro
 | `--category X` | `category=…` | `Community` \| `Popularity` \| `Quality` — filter catalogue/lists |
 | `--param k=v` | `k=v` | escape hatch for any param not modelled above (repeatable) |
 
-## The 35 metrics
+## Featured dashboard metrics
+
+When building a repo health dashboard, **start here**. These are the headline CHAOSS cards the template targets — grouped by the three API topic buckets. Each row maps the **display name** → **slug**, the **default window**, what to read from the payload, and a **narrative pattern** (replace placeholders with live `value` / `secondary` / `visual` / `examples`).
+
+Fetch the whole set in one call (default window 365 unless you re-query individual slugs with `--window`):
+
+```bash
+python .claude/skills/query-chaoss/query.py repo <owner> <repo>
+```
+
+For richer cards (sparklines, contributor bars, doc-signal checklist), add `--include series` on metrics that support it, or fetch all metrics then re-fetch individual slugs with the right flags.
+
+### Community — *is the project alive & kicking?*
+
+| Display name | slug | Default window | Read from payload | Narrative pattern |
+|---|---|---|---|---|
+| **Activity Dates and Times** | `activity_dates` | 365 | `value` = total commits; `secondary` = busiest month; `series[]` = monthly histogram | "Peak activity: {secondary}" — render `series` as a sparkline. Day-of-week / hour-of-day peaks are **not** in the API yet (monthly only). |
+| **Contributors** | `contributors` | 365 | `value` = count; `examples[]` or `visual.bars` = top names; `secondary` = per-store breakdown | "{value} contributors" — list names from `examples` or `visual.bars` when present. |
+| **Change Request Closure Ratio** | `closure_ratio` | 30 | `value` = % closed; `secondary` = merged vs declined split | "{value} of change requests closed within {window_days} days" |
+| **Issue Response Time** | `issue_response_time` | 365 | `value` = median hours | "Median first response to issues: {value}" |
+| **Change Request Reviews** | `cr_reviews` | 30 | `value` = reviewed PR count; pair with `cr_accepted` for avg | "{value} reviews this month" — divide `cr_reviews` by `cr_accepted` for "avg. N per change request" when both have data |
+| **New Contributors** | `new_contributors` | 30 | `value` = first-time contributors in window | "{value} new contributors joined in the last month" |
+| **Change Requests** | `cr_accepted` + `cr_declined` | 90 | `cr_accepted` = merged PRs; `cr_declined` = closed-without-merge | "{cr_accepted} merged this quarter" — **open** PR count is **not** a catalogue metric; use `query-opensearch` on the PR index if you need it |
+| **Organizational Diversity** | `org_diversity` | snapshot | `value` = distinct org count | "Contributions from {value} organizations" |
+| **Committers** | `committers` | 90 | `value` = distinct committers | "{value} committers pushed code in the last 90 days" |
+| **Time to First Response** | `first_response` | 365 | `value` = median hours (PRs + issues) | "Average time to first reply: {value}" — sibling of `issue_response_time` but includes PRs |
+| **Contributor Absence Factor** | `absence_factor` | 365 | `value` = bus-factor N; `secondary` = share line; `visual.kind=rank_bars` | "{value} contributors account for 50% of commits" — read exact share from `secondary` (e.g. "top 1 of 3 carry 62%") |
+| **Types of Contributions** | — | — | **Not in API** | Code / docs / review % breakdown is not computed. Approximate with `code_lines` (code churn) + `cr_reviews` (review activity); docs share needs a custom query |
+
+### Popularity — *who sees, uses & reuses it?*
+
+| Display name | slug | Default window | Read from payload | Narrative pattern |
+|---|---|---|---|---|
+| **Academic Open Source Project Impact** | `academic_impact` | snapshot | `value` = paper count; `secondary` / `examples` for detail | "Cited in {value} papers" — JOSS/publication subtype not split in current spec |
+| **Clones** | — | — | **Not in API** | GitHub clone traffic is not in the hub snapshot |
+| **Number of Downloads** | — | — | **Not in API** | Package-registry downloads (PyPI, npm, …) are not indexed |
+| **Organizational Project Skill Demand** | — | — | **Not in API** | Job-posting demand is not indexed |
+| **Project Popularity** | `project_popularity` | snapshot | `value` = composite score; `secondary` = stars/forks/dependents | "Top {value} visibility" — read component breakdown from `secondary`; percentile ranking ("top 5%") is **not** computed |
+| **Project Recommendability** | — | — | **Not in API** | Survey / scorecard data is not indexed |
+| **Technical Fork** | `technical_fork` | snapshot | `value` = total forks; `secondary` = SPARQL vs Neo4j | "{value} forks" — active forks in last year needs a custom OpenSearch/Neo4j query |
+
+### Quality — *can others understand & reuse it?*
+
+| Display name | slug | Default window | Read from payload | Narrative pattern |
+|---|---|---|---|---|
+| **Documentation Discoverability** | `docs_discoverability` | snapshot | `value` = score (e.g. `4/4`); `secondary` = signal list; `examples[]` = per-signal yes/no | "README links to docs, API reference, and tutorials" — map from `examples` signals (README · homepage · wiki · Pages) |
+| **License Coverage** | `license_coverage` | snapshot | `value` = yes/no or % at project level | "{value} of files have declared licenses" — per-repo is binary; project aggregate reads as mean share |
+| **Licenses Declared** | `licenses_declared` | snapshot | `value` = count; `examples[]` = SPDX ids | "{license} declared" — e.g. "MIT license declared in LICENSE file" from `examples` |
+| **Programming Language Distribution** | `programming_languages` | snapshot | `visual.kind=pill_cloud` or `examples[]` | "Python 62%, C++ 28%, …" — API currently returns a **presence set** (language names), not byte shares; say so honestly when shares aren't available |
+| **Release Frequency** | `release_frequency` | snapshot | `value` = releases/year or count; `secondary` = date span | "{value} releases in the past 12 months" |
+| **Test Coverage** | `test_coverage` | snapshot | `value` = % from README badge | "{value} line coverage on main branch" — parsed statically from README shields, not CI |
+| **Upstream Code Dependencies** | `upstream_dependencies` | snapshot | `value` = direct dep count; `secondary` = outdated count if present | "{value} direct dependencies; {outdated} outdated" |
+
+### Recommended windows for the dashboard
+
+| User-facing period | `--window` |
+|---|---|
+| last month | `30` |
+| last quarter | `90` |
+| last 90 days (committers) | `90` |
+| last year | `365` |
+| all-time / snapshot | omit or `3650` (metrics with `is_time_based: false` ignore the window) |
+
+Re-fetch individual slugs when the dashboard needs mixed windows (e.g. `closure_ratio --window 30` alongside `contributors --window 365`).
+
+### Rendering hints (`visual` block)
+
+Several featured slugs ship a `visual` object even without `--include` — use it when building UI cards:
+
+| slug | `visual.kind` | Use for |
+|---|---|---|
+| `activity_dates` | (use `series[]`) | monthly sparkline |
+| `absence_factor` | `rank_bars` | contributor commit-share bars + `headline_tone` |
+| `docs_discoverability` | `donut` | fraction of doc signals present |
+| `programming_languages` | `pill_cloud` | language tags |
+| `license_coverage` | `donut` | licensed vs unlicensed |
+
+Add `--include traces,series` when you need the exact store query behind a number or a time-series for charts.
+
+## Full catalogue (35 metrics)
 
 Three topic buckets. Every metric is windowed unless noted as a lifetime/snapshot value. Fetch the live, authoritative spec for any one with `spec <slug>` (or the whole set with `catalogue`) — the one-liners below are a map, not the source of truth. The **Store** column is where the headline number is computed (OS = OpenSearch/GrimoireLab, SP = SPARQL, N4 = Neo4j); several metrics reconcile more than one store via the `unification` field.
 
-### Community (19) — *is the project alive & kicking?*
+**Bold slugs** appear in the featured dashboard above.
+
+### Community (19)
 
 | slug | Measures | Store |
 |---|---|---|
-| `contributors` | Distinct people who contributed in the window | OS·SP·N4 |
-| `new_contributors` | People whose **first** contribution falls inside the window (growth) | SP·OS |
-| `committers` | Distinct people who **landed** commits (`committer_name`) — narrower than contributors | OS |
+| **`contributors`** | Distinct people who contributed in the window | OS·SP·N4 |
+| **`new_contributors`** | People whose **first** contribution falls inside the window (growth) | SP·OS |
+| **`committers`** | Distinct people who **landed** commits (`committer_name`) — narrower than contributors | OS |
 | `inactive_contributors` | Past contributors whose last commit predates the window | OS |
 | `occasional_contributors` | Drive-by authors: ≤4 commits in the window (outreach vs retention) | OS |
-| `absence_factor` | **Bus factor** — fewest contributors making ≥50% of commits; low = risk | OS |
-| `org_diversity` | Distinct orgs in the contributor pool (single-vendor vs distributed) | SP |
+| **`absence_factor`** | **Bus factor** — fewest contributors making ≥50% of commits; low = risk | OS |
+| **`org_diversity`** | Distinct orgs in the contributor pool (single-vendor vs distributed) | SP |
 | `project_demographics` | Pool breakdown: total / core (top 80%) / recent (<90d) / dormant (>180d) | OS |
-| `activity_dates` | Monthly commit histogram (steady vs bursty) — rendered as a sparkline | OS |
+| **`activity_dates`** | Monthly commit histogram (steady vs bursty) — rendered as a sparkline | OS |
 | `burstiness` | Goh–Barabási B on commit inter-arrival: −1 periodic, 0 random, +1 bursty | OS |
-| `first_response` | Median hours to first non-bot, non-author reply on a PR/issue | OS |
-| `issue_response_time` | Median hours to first reply, **issues only** | OS |
+| **`first_response`** | Median hours to first non-bot, non-author reply on a PR/issue | OS |
+| **`issue_response_time`** | Median hours to first reply, **issues only** | OS |
 | `issue_resolution` | Median days from issue open → close (PRs excluded) | OS |
-| `closure_ratio` | Closed / total PRs in window (merged vs closed split in secondary) | OS |
+| **`closure_ratio`** | Closed / total PRs in window (merged vs closed split in secondary) | OS |
 | `issues_new` | Issues opened in the window (backlog inflow) | OS |
 | `issues_active` | Issues with any update — comment/label/state change (liveness) | OS |
 | `issues_closed` | Issues closed in the window (backlog outflow) | OS |
 | `cr_duration` | Median days PR open → **merge** (merge-only; acceptance speed) | OS |
 | `pr_time_to_close` | Median days PR open → close (**all** closed: merged + declined) | OS |
 
-### Popularity (3) — *who sees, uses & reuses it?*
+### Popularity (3)
 
 | slug | Measures | Store |
 |---|---|---|
-| `project_popularity` | Composite: stars + forks (SPARQL) + dependents (inbound `DEPENDS_ON`) | SP·N4 |
-| `technical_fork` | Total fork count (GitHub-reported via SPARQL; in-graph subset via Neo4j) | SP·N4 |
-| `academic_impact` | Scholarly articles whose authors also contribute to the repo | SP |
+| **`project_popularity`** | Composite: stars + forks (SPARQL) + dependents (inbound `DEPENDS_ON`) | SP·N4 |
+| **`technical_fork`** | Total fork count (GitHub-reported via SPARQL; in-graph subset via Neo4j) | SP·N4 |
+| **`academic_impact`** | Scholarly articles whose authors also contribute to the repo | SP |
 
-### Quality (13) — *can others understand & reuse it?*
+### Quality (13)
 
 | slug | Measures | Store |
 |---|---|---|
-| `licenses_declared` | Whether ≥1 license is declared (`schema:license` triple) | SP |
-| `license_coverage` | Declares an SPDX license (per-repo yes/no; project mean = share licensed) | SP |
-| `programming_languages` | Distinct declared languages (presence-set, no byte shares) | SP |
+| **`licenses_declared`** | Whether ≥1 license is declared (`schema:license` triple) | SP |
+| **`license_coverage`** | Declares an SPDX license (per-repo yes/no; project mean = share licensed) | SP |
+| **`programming_languages`** | Distinct declared languages (presence-set, no byte shares yet) | SP |
 | `code_lines` | Lines added + removed in window; file-change count in secondary | OS |
-| `docs_discoverability` | Scores 4 signals: README, homepage/docs, wiki, GitHub Pages | SP |
-| `test_coverage` | Static coverage % advertised in README (shields badge / `coverage: NN%`) | SP |
-| `release_frequency` | Lifetime release cadence (releases/year, first→latest release) | SP |
-| `upstream_dependencies` | Distinct upstream repos depended on (`DEPENDS_ON` graph) | N4 |
-| `cr_reviews` | PRs with ≥1 non-bot review comment (pair with `self_merge`) | OS |
-| `cr_accepted` | Merged PRs in window (acceptance half of `closure_ratio`) | OS |
+| **`docs_discoverability`** | Scores 4 signals: README, homepage/docs, wiki, GitHub Pages | SP |
+| **`test_coverage`** | Static coverage % advertised in README (shields badge / `coverage: NN%`) | SP |
+| **`release_frequency`** | Lifetime release cadence (releases/year, first→latest release) | SP |
+| **`upstream_dependencies`** | Distinct upstream repos depended on (`DEPENDS_ON` graph) | N4 |
+| **`cr_reviews`** | PRs with ≥1 non-bot review comment (pair with `self_merge`) | OS |
+| **`cr_accepted`** | Merged PRs in window (acceptance half of `closure_ratio`) | OS |
 | `cr_declined` | PRs closed without merging (rejections / stale cleanup) | OS |
 | `self_merge` | Fraction of merged PRs the author merged themselves — review-culture signal | OS |
 | `bot_activity` | Share of commits by recognised bots (dependabot, renovate, `*[bot]`, …) | OS |
 
 > **Phase / freshness note:** the issue/PR-based rows (`first_response`, `issue_*`, `issues_*`, `cr_*`, `pr_time_to_close`, `closure_ratio`, `self_merge`) and the newest signals (`test_coverage`, `release_frequency`) depend on GitHub-backend enrichment that is sparse in the current 2026-05 snapshot — expect `"—"` for many repos until a re-extraction lands.
 
-## Response shape (verified 2026-06-08)
+## Response shape (verified 2026-06-10)
 
 A **single repo metric** carries the spec fields (`slug`, `name`, `category`, `chaoss_topic`, `question`, `description`, `chaoss_url`, `is_time_based`) plus the computed result:
 
 - `value` — **a display string** (`"6"`, `"72%"`, `"4.2 h"`, `"—"`). `"—"` means *no data*, **never 0** — don't read it as zero.
-- `secondary` — per-store breakdown, e.g. `"Neo4j (all-time): 10 · SPARQL (windowed): 0 · OpenSearch (windowed): 6"`.
+- `secondary` — per-store breakdown or extra context, e.g. `"Neo4j (all-time): 10 · SPARQL (windowed): 0 · OpenSearch (windowed): 6"` or `"top 1 of 3 contributors carry 62% of 13 commits"`.
 - `label` — which store/window produced the headline (e.g. `"last 730 days · OpenSearch"`).
 - `unification` — prose explaining how the three stores were reconciled into `value`.
 - `headline_tone`, `notes`, `window_days`, `computed_at`, `canonical_url`.
-- With `--include`: `visual` (block to render), `traces[]` (`store`/`engine`/`query`/`result_summary`), `recipes` (`python`/`js`/`bash`), `series[]` (`date`/`value`/`series_unit`).
+- `visual` — optional render block (`rank_bars`, `donut`, `pill_cloud`, …) on several featured slugs.
+- With `--include`: `traces[]` (`store`/`engine`/`query`/`result_summary`), `recipes` (`python`/`js`/`bash`), `series[]` (`date`/`value`/`series_unit`).
 
 **All repo metrics** returns `{repo, canonical_url, window_days, computed_at, metric_count: 35, metrics: [...]}` (each entry is one metric object as above).
 
 A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggregate` block: `{rule: "sum"|…, n_repos, n_with_value, sum, mean, min, max, value, …}`. **`n_with_value`** tells you how many member repos actually had data — lean on it, since distinct-people counts carry an `approx` flag.
 
-## Live state (verified 2026-06-08)
+## Live state (verified 2026-06-10)
 
 - The hub serves the **2026-05 snapshot**. The newest signals (`test_coverage`, `release_frequency`) and the issue/PR-based metrics (`first_response`, `cr_*`, `issues_*`) read `"—"` for most repos until a fresh re-extraction lands — **expect them sparse**.
 - Repos are **GitHub-only**: `repo <owner> <repo>` → `/repositories/github.com/...`.
@@ -137,6 +219,8 @@ A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggreg
 ## Conventions
 
 - **Treat `value` as a string.** For numbers, parse `value` or read the `visual` block — and remember `"—"` ≠ 0.
+- **Use the featured table** when the user names a dashboard card ("closure ratio", "bus factor", "doc discoverability") — map to the slug, pick the window, format with the narrative pattern.
+- **Say when data is missing or approximate** — byte-level language shares, open PR counts, clone/download stats, and contribution-type breakdowns are gaps; don't invent them.
 - This API is **read-only and GET-only**; there is nothing to mutate. The read password suffices.
 - `--window` snaps server-side — passing 400 lands on 365; don't expect arbitrary windows.
 - Project aggregates are cached 30 min; add `--refresh` only when you need a recompute, since it's slower.

@@ -10,7 +10,7 @@ Longer-form project context for agents. Companion to root `CLAUDE.md` (which cov
 
 Two audiences read this codebase:
 
-1. **The SDSC team at EPFL/ETH Zürich**, who use views like the Graph Explorer to operate and showcase the live Open Pulse deployment at `openpulse.epfl.ch`.
+1. **The SDSC team at EPFL/ETH Zürich**, who use views like the Graph Explorer to operate and showcase the live Open Pulse deployment on the first node at `openpulse.epfl.ch` (public home: `openpulse.science`).
 2. **Downstream users** — anyone who clicks "Use this template" on GitHub to spin up a new project. They will build their own views and expect this codebase to demonstrate idiomatic, reusable patterns.
 
 When deciding between "this is a one-off feature" vs. "this is a pattern others will follow", err toward the second. Naming, file layout, abstractions, and design tokens should generalise.
@@ -21,7 +21,18 @@ When deciding between "this is a one-off feature" vs. "this is a pattern others 
 
 ## The Open Pulse platform (data layer)
 
-Open Pulse is a research-software-observability stack maintained by SDSC. The app does not own data — it surfaces it from three live stores deployed at `openpulse.epfl.ch`. All three live behind plain HTTP/HTTPS on internal ports; the `.env.example` documents the exact endpoints and the auth conventions (`replace-me` upstream placeholders).
+Open Pulse is a research-software-observability stack maintained by SDSC. The app does not own data — it surfaces it from live stores on the hub deployment. All stores live behind plain HTTP/HTTPS on internal ports; the `.env.example` documents the exact endpoints and the auth conventions (`replace-me` upstream placeholders).
+
+### Public site vs deployment node
+
+Two URLs appear throughout this kit — they are **not** interchangeable:
+
+| URL | Role |
+|---|---|
+| **[openpulse.science](https://openpulse.science)** | The project's **main public page** — marketing, documentation, ontology namespaces (`https://openpulse.science/git-metadata-extractor#`, …). Downstream apps link here in the required attribution bar (`Built using openpulse.science at …`). |
+| **[openpulse.epfl.ch](https://openpulse.epfl.ch)** | The **first live deployment node** — the SDSC hub where Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API, collections, extractor, and crawler all run. Skills, `.env`, and server-side proxies point at this host (often with port suffixes like `:7502`, `:7503`, `:7508`). |
+
+When wiring data or running query skills, use `openpulse.epfl.ch`. When citing the platform or linking for end users, use `openpulse.science`.
 
 ### Neo4j — the property graph
 
@@ -46,7 +57,58 @@ Open Pulse is a research-software-observability stack maintained by SDSC. The ap
 
 ### Higher-level hub skills
 
-Beyond the three raw stores, the Open Pulse hub exposes computed/aggregated APIs with their own skills: `op-collections` (indexed datasets), `op-search` (semantic/vector search), `query-chaoss` (CHAOSS health metrics), `op-crawler` and `op-extractor` (pipeline control). See each skill's `SKILL.md`.
+Beyond the three raw stores, the Open Pulse hub at `openpulse.epfl.ch` exposes computed/aggregated APIs with their own skills: `op-collections` (indexed datasets), `op-search` (semantic/vector search), `query-chaoss` (CHAOSS health metrics), `op-crawler` and `op-extractor` (pipeline control). See each skill's `SKILL.md`.
+
+### CHAOSS health metrics (featured dashboard)
+
+The hub computes **35 CHAOSS metrics** live per GitHub repository (or aggregated per GrimoireLab project) by unifying Neo4j + SPARQL + OpenSearch. Browse them at `https://openpulse.epfl.ch/chaoss` or query via the `query-chaoss` skill. Full slug catalogue and API flags live in `.claude/skills/query-chaoss/SKILL.md`; the list below is the **featured dashboard set** this template is designed around.
+
+Three topic buckets (matching the CHAOSS framing):
+
+#### Community — *is the project alive & kicking?*
+
+| Card | API slug | Typical window |
+|---|---|---|
+| Activity Dates and Times | `activity_dates` | 365 d — monthly commit histogram (`series[]`); day/hour peaks not yet available |
+| Contributors | `contributors` | 365 d |
+| Change Request Closure Ratio | `closure_ratio` | 30 d |
+| Issue Response Time | `issue_response_time` | 365 d |
+| Change Request Reviews | `cr_reviews` | 30 d — pair with `cr_accepted` for avg reviews per PR |
+| New Contributors | `new_contributors` | 30 d |
+| Change Requests (merged) | `cr_accepted` (+ `cr_declined`) | 90 d — **open** PR count is not a catalogue metric |
+| Organizational Diversity | `org_diversity` | snapshot |
+| Committers | `committers` | 90 d |
+| Time to First Response | `first_response` | 365 d — PRs + issues; use `issue_response_time` for issues only |
+| Contributor Absence Factor (bus factor) | `absence_factor` | 365 d |
+| Types of Contributions (code / docs / reviews %) | — | **not in API** — approximate with `code_lines` + `cr_reviews` or custom queries |
+
+#### Popularity — *who sees, uses & reuses it?*
+
+| Card | API slug | Notes |
+|---|---|---|
+| Academic Open Source Project Impact | `academic_impact` | Papers whose authors also contribute |
+| Project Popularity | `project_popularity` | Stars + forks + dependents composite |
+| Technical Fork | `technical_fork` | Total fork count |
+| Clones | — | **not in API** |
+| Number of Downloads | — | **not in API** (no PyPI/npm registry index) |
+| Organizational Project Skill Demand | — | **not in API** |
+| Project Recommendability | — | **not in API** |
+
+#### Quality — *can others understand & reuse it?*
+
+| Card | API slug | Notes |
+|---|---|---|
+| Documentation Discoverability | `docs_discoverability` | README · homepage/docs · wiki · GitHub Pages signals |
+| License Coverage | `license_coverage` | Per-repo yes/no; project mean = share licensed |
+| Licenses Declared | `licenses_declared` | SPDX ids from metadata |
+| Programming Language Distribution | `programming_languages` | Presence set today — byte shares not yet in ontology |
+| Release Frequency | `release_frequency` | Releases per year from GME metadata |
+| Test Coverage | `test_coverage` | Static % parsed from README badges, not CI |
+| Upstream Code Dependencies | `upstream_dependencies` | `DEPENDS_ON` graph in Neo4j |
+
+**Response conventions:** `value` is always a **display string** (`"72%"`, `"4.2 h"`, `"—"`). `"—"` means *no data*, never zero. Several slugs ship a `visual` block (`rank_bars`, `donut`, `pill_cloud`) for UI cards. Issue/PR-based metrics and the newest quality signals (`test_coverage`, `release_frequency`) are sparse in the current snapshot until GitHub enrichment is refreshed — expect `"—"` on many repos.
+
+**Quick fetch:** `python .claude/skills/query-chaoss/query.py repo <owner> <repo>` returns all 35; re-fetch individual slugs with `--window 30|90|365` when the dashboard needs mixed periods.
 
 ### Pulling them together
 
@@ -98,5 +160,6 @@ If a change makes one of these journeys harder (e.g. couples the design system t
 - **Visual rules**: the `frontend-dev` skill (`.claude/skills/frontend-dev/SKILL.md`)
 - **Backend endpoints & credentials**: `.env.example`
 - **Data store query skills**: `.claude/skills/query-{neo4j,sparql,opensearch}/SKILL.md`
+- **CHAOSS health metrics**: `.claude/skills/query-chaoss/SKILL.md` (featured dashboard slugs above)
 - **Publishing**: README → *Publishing to GitHub Pages*
 - **Devcontainer**: `.devcontainer/`
