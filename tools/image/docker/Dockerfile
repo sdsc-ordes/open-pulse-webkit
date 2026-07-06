@@ -24,9 +24,14 @@ ARG USERNAME=node
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-RUN groupadd --gid "${USER_GID}" "${USERNAME}" \
+# ubuntu:24.04 already ships a user/group at uid/gid 1000 (usually "ubuntu") — remove it first.
+RUN if getent passwd "${USER_UID}" > /dev/null; then userdel -r "$(getent passwd "${USER_UID}" | cut -d: -f1)"; fi \
+    && if getent group "${USER_GID}" > /dev/null; then groupdel "$(getent group "${USER_GID}" | cut -d: -f1)"; fi \
+    && groupadd --gid "${USER_GID}" "${USERNAME}" \
     && useradd -s /bin/bash --uid "${USER_UID}" --gid "${USER_GID}" -m "${USERNAME}" \
     && echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-USER "${USERNAME}"
+# NOTE: USER does not strip shell-style quotes — `USER "${USERNAME}"` would bake
+# literal double quotes into the image config and break container start.
+USER ${USERNAME}
 WORKDIR /home/node

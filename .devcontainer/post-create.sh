@@ -6,8 +6,10 @@ NODE_HOME="/home/node"
 CLAUDE_DIR="${NODE_HOME}/.claude"
 
 echo "Preparing Claude Code config volume at ${CLAUDE_DIR}..."
-mkdir -p "${CLAUDE_DIR}"
-chown -R node:node "${CLAUDE_DIR}"
+# The named volume is created owned by root, but this script runs as node —
+# use sudo (node has NOPASSWD sudo) so the chown doesn't abort under set -e.
+sudo mkdir -p "${CLAUDE_DIR}"
+sudo chown -R node:node "${CLAUDE_DIR}"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
