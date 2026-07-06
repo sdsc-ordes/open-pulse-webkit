@@ -2,7 +2,7 @@
   "name": "pulseWebKit",
   "dockerComposeFile": "../tools/image/docker/docker-compose.yml",
   "service": "web",
-  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "workspaceFolder": "/workspaces/open-pulse-webkit",
   "shutdownAction": "stopCompose",
   "remoteUser": "node",
   "features": {
