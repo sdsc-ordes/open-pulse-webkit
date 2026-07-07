@@ -1,0 +1,27 @@
+{
+  "name": "enac-open-pulse-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "fetch-data": "node scripts/fetch-data.mjs",
+    "verify:ui": "node scripts/verify-ui.mjs"
+  },
+  "dependencies": {
+    "@carrot-kpi/switzer-font": "^0.1.0",
+    "@fontsource-variable/space-grotesk": "^5.2.5",
+    "@fontsource/jetbrains-mono": "^5.2.5",
+    "d3": "^7.9.0"
+  },
+  "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "^26.1.0",
+    "playwright": "^1.61.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}
