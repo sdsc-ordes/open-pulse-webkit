@@ -1,6 +1,6 @@
 # AGENTS.md — pulseWebKit (Open Pulse web app)
 
-Agent instructions for this repository. Read this first, then `.agents/PROJECT.md` for the broader mission, `.agents/SKILLS.md` for concrete task recipes, and the `frontend-dev` skill before touching any UI.
+Agent instructions for this repository. Read this first, then `.agents/PROJECT.md` for the broader mission, `.agents/SKILLS.md` for concrete task recipes, and — before touching any UI — the `frontend-dev` skill (engineering mechanics) plus the **active design skill** (see *Design system* below).
 
 <!-- sync:keep -->
 > **Note on dual agent dirs:** `.claude/` is the canonical source of truth for project docs and skills. `.agents/` (plus root `AGENTS.md`) is a generated, vendor-neutral mirror for non-Claude agent runtimes. **Edit `.claude/` only**, then run `node tools/sync-agents.mjs` to regenerate `.agents/`. CI fails if they drift (`node tools/sync-agents.mjs --check`).
@@ -16,7 +16,7 @@ Agent instructions for this repository. Read this first, then `.agents/PROJECT.m
 
 The Open Pulse platform (Neo4j + Oxigraph + OpenSearch) is the data layer; this kit demonstrates how to pull, type, and visualise variables from it. See `.agents/PROJECT.md` for the full mission, data-source overview, and template-extension guidance.
 
-**Framework-neutral.** This template does **not** prescribe a UI framework. The web app lives in `src/your-web/` — build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, web components, …). The two things that *are* fixed are framework-independent: the **Open Pulse query skills** (`.agents/skills/`) and the **SDSC design system** (the `frontend-dev` skill, defined as CSS custom properties + HTML/CSS). Keep those; swap everything else.
+**Framework-neutral.** This template does **not** prescribe a UI framework. The web app lives in `src/your-web/` — build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, web components, …). The two things that *are* fixed are framework-independent: the **Open Pulse query skills** (`.agents/skills/`) and the **design-skill system** (a `--op-*` token contract defined in the `frontend-dev` skill, with values supplied by a swappable design skill — see *Design system*). Keep those; swap everything else.
 
 ---
 
@@ -31,7 +31,7 @@ No framework is mandated, but the template carries a **default posture**. Lean t
   2. **Optimised static assets** — serve **web-optimised images**: responsive sizes, modern formats (AVIF/WebP), explicit dimensions, lazy loading. Never ship original-resolution images.
   3. **DuckDB-Wasm over Parquet** — for larger or queryable datasets, ship `.parquet` files as static assets and query them **in-browser** with [DuckDB-Wasm](https://duckdb.org/docs/stable/clients/wasm/overview). Stays fully static (no backend), columnar + compressed, with fast client-side filtering/aggregation.
 - **Interactive visualisation** — use **client-side JS** for plots and graphs. Default to **[D3.js](https://d3js.org)** for bespoke/interactive charts and the force-directed graph; other JS viz libraries are fine where they fit. Charts should be **interactive** (hover, zoom, filter) — not static images.
-- **Attribution bar (required).** Every page renders a top bar reading **`Built using openpulse.science at <timestamp>`**, where `<timestamp>` is the **build time** (ISO 8601 UTC, injected at build — never computed in the browser). Link `openpulse.science`. Visual spec: `frontend-dev` skill §7.4.
+- **Attribution bar (required).** Every page renders a top bar reading **`Built using openpulse.science at <timestamp>`**, where `<timestamp>` is the **build time** (ISO 8601 UTC, injected at build — never computed in the browser). Link `openpulse.science`. Visual spec: active design skill (`openpulse-dark-theme` §7.4).
 
 These are defaults that make the GitHub-Pages publishing path (see README) the path of least resistance. If a request genuinely needs a server runtime or live queries, say so and fall back to the server-side proxy pattern below.
 
@@ -47,9 +47,9 @@ Most sites built from this kit are **scoped dashboards**: they tell the open-sou
   - *Single organisation or product*: catalogue & releases · community health · adoption/usage · dependencies.
   - *Topic or discipline*: inventory & technology breakdown · key projects · activity over time · who works on it across institutions.
 - **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote — every scope has them.
-- **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.5).
+- **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`openpulse-dark-theme` §7.5).
 
-Whatever theme set you pick, title growth widgets precisely — **ecosystem growth** (more repos over time) and **per-repo growth** (one project's trajectory) are different data cuts. The underlying layout archetypes — full-page graph canvas, list/detail, card grid — live in the `sdsc-ui-kit` skill (`references/layouts.md`), with their dark mappings in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
+Whatever theme set you pick, title growth widgets precisely — **ecosystem growth** (more repos over time) and **per-repo growth** (one project's trajectory) are different data cuts. The underlying layout archetypes — full-page graph canvas, list/detail, card grid — live in the `sdsc-ui-kit` skill (`references/layouts.md`), with their dark mappings in the `openpulse-dark-theme` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
 
 ---
 
@@ -85,7 +85,7 @@ Switch manually: `bash tools/image/docker/setup-mcp.sh host` or `… docker`. Ca
 
 1. Start the dev server (from `src/your-web`).
 2. Drive the affected page through the Playwright MCP browser tools — navigate, click, fill, snapshot.
-3. Take a screenshot and confirm it visually matches the design intent (see the `frontend-dev` skill).
+3. Take a screenshot and confirm it visually matches the design intent (see the active design skill).
 4. Watch the browser console for runtime errors and network failures.
 
 A type-check is a correctness gate, **not** a feature-correctness gate. Do not claim UI work is done on a passing build alone — verify in the browser.
@@ -100,7 +100,7 @@ open-pulse-webkit/
 │   ├── PROJECT.md      #   mission + data-source overview
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
-│   └── skills/         #   the 10 skills (frontend-dev + sdsc-ui-kit + query-* + op-*)
+│   └── skills/         #   the 11 skills (frontend-dev + design skills + query-* + op-*)
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── AGENTS.md           # this file (canonical conventions)
 ├── AGENTS.md           # generated mirror of AGENTS.md
@@ -140,20 +140,23 @@ If you use TypeScript, keep API response shapes typed in one place and treat tha
 
 ## Design system
 
-Design systems are delivered to agents **as skills** — a brand lives in `.agents/skills/<name>/` as a `SKILL.md` plus token/reference files, and swapping brands means swapping the skill, not rewriting app code (see `.agents/SKILLS.md` §11 for how to integrate your own).
+> **Active design skill: `openpulse-dark-theme`** (base brand: `sdsc-ui-kit`). To re-brand, drop in a new design skill and change this line — see below.
 
-This template ships two, and **the SDSC brand system (`sdsc-ui-kit`) is the default**:
+The design system is split so a new brand can be dropped in **without touching app code**:
 
-- **`sdsc-ui-kit`** — the general SDSC design system (datascience.ch: tokens, typography, components, layouts, dark mode). Read it before writing any UI code; it is the default look for apps built from this kit, and the **ground truth for all brand values** (colours, scales, component anatomy).
-- **`frontend-dev`** — the permanent-dark **Open Pulse dashboard** theme, a *delta on top of* `sdsc-ui-kit` (not a second system). It defines the `--op-*` dark tokens, the dashboard-only components (attribution bar §7.4, provenance disclosure §7.5, graph explorer §8), and a named list of deliberate deviations from the base kit (§1.2). Reach for it when building the dashboard reference outcome above; read `sdsc-ui-kit` first.
+- **`frontend-dev`** — the *engineering* skill: design-skill-agnostic mechanics (the `--op-*` **token contract** the app consumes, font-loading, canvas/D3 rules, build-time injection, required shared components, Playwright verification). It contains **no design values** and never changes when the brand does.
+- **The active design skill** (declared above) — supplies the *values*: `assets/tokens.css` implementing the token contract, plus component/layout looks. Default is **`openpulse-dark-theme`**, the permanent-dark Open Pulse dashboard theme — it defines the dark tokens, the dashboard visuals (attribution bar §7.4, provenance disclosure §7.5, graph explorer §8), and a named list of deliberate deviations (§1.2) from its base.
+- **`sdsc-ui-kit`** — the base SDSC brand system (datascience.ch) that `openpulse-dark-theme` layers on: **ground truth for all brand values**, typography anatomy, components, layouts, icons.
 
-Rules that hold under both:
+**Swapping brands** = add `.agents/skills/<your-brand>/` implementing the token contract, copy its `tokens.css` into the app's `:root`, update the *Active design skill* line above, run `node tools/sync-agents.mjs`. App code stays untouched because it references only the contract token names (recipe: `.agents/SKILLS.md` §11).
 
-- All colors come from CSS custom properties (`--op-*` in the dark kit; mirror them into your utility framework's theme if you use one)
+Rules that hold under any design skill:
+
+- All colors come from the `--op-*` CSS custom properties (mirror them into your utility framework's theme if you use one)
 - Never hardcode hex in template markup — canvas/SVG drawing code is the only exception
-- Fonts: Space Grotesk for headings/wordmark, Switzer for all UI text, JetBrains Mono (`.mono`) for code/IDs
-- Sharp corners everywhere (`rounded-none`) — buttons and badges use `rounded` (4px) only
-- Brand blues only for interactive chrome; status colors only on badges/toasts
+- The attribution bar and the provenance disclosure are required product components regardless of brand (`frontend-dev` §7)
+
+Under the shipped SDSC skills additionally: Space Grotesk headings / Switzer UI text / JetBrains Mono code (`.mono`); sharp corners (`rounded-none`) with buttons and badges at `rounded` (4px) only; brand blues only for interactive chrome, status colors only on badges/toasts.
 
 ---
 
