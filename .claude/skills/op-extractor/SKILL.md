@@ -36,6 +36,8 @@ The three `op-*` skills share the same host and `OPENPULSE_*` credentials. Reads
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.claude/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.claude/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # ── Read / monitor (reader password) ──
 python .claude/skills/op-extractor/query.py quests                 # list quest recipes on disk

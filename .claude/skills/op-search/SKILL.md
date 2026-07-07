@@ -30,6 +30,8 @@ Both scripts read `OPENPULSE_ENDPOINT` (base host, e.g. `https://openpulse.epfl.
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.claude/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.claude/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # Semantic search a provider (free text). Returns ranked hits with vector_score + rerank_score.
 python .claude/skills/op-search/query.py search github_repos "protein structure prediction" --top-k 5
