@@ -27,6 +27,7 @@ No framework is mandated, but the template carries a **default posture**. Lean t
 - **Static-first.** Build something that publishes to **GitHub Pages with no server runtime** — a static bundle of HTML/CSS/JS. Optimise for the end user: fast first paint, accessible markup, minimal blocking JS, progressive enhancement.
 - **Data strategy**, in order of preference:
   1. **Inline in the HTML** — for small datasets, bake the data into the page at build time (e.g. a `<script type="application/json">` block or pre-rendered markup). Zero fetch, instant render.
+     The canonical implementation is a **build-time snapshot script** (`scripts/fetch-data.mjs` in your app) that queries the stores with the same transports as the `query-*` skills and writes typed JSON into `src/data/` — credentials stay at build time and the browser never talks to the stores. See `.agents/SKILLS.md` §9–§10.
   2. **Optimised static assets** — serve **web-optimised images**: responsive sizes, modern formats (AVIF/WebP), explicit dimensions, lazy loading. Never ship original-resolution images.
   3. **DuckDB-Wasm over Parquet** — for larger or queryable datasets, ship `.parquet` files as static assets and query them **in-browser** with [DuckDB-Wasm](https://duckdb.org/docs/stable/clients/wasm/overview). Stays fully static (no backend), columnar + compressed, with fast client-side filtering/aggregation.
 - **Interactive visualisation** — use **client-side JS** for plots and graphs. Default to **[D3.js](https://d3js.org)** for bespoke/interactive charts and the force-directed graph; other JS viz libraries are fine where they fit. Charts should be **interactive** (hover, zoom, filter) — not static images.
@@ -36,13 +37,16 @@ These are defaults that make the GitHub-Pages publishing path (see README) the p
 
 ---
 
-## Reference views (patterns to build toward)
+## Reference outcome (what a finished dashboard looks like)
 
-- **Graph Explorer** — a force-directed graph of Neo4j data (repos, contributors, commits, orgs, PRs) with temporal animation — full-page canvas archetype.
-- **List / detail** (e.g. pipeline runs) — list + detail with status badges and tables.
-- **Card grid** (e.g. service health) — mixed-status surfaces.
+The worked example is the **ENAC dashboard** ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac), built from this template). Its shape is the recommended story for any Open Pulse dashboard:
 
-These three cover the layout archetypes most downstream users need. See the `frontend-dev` skill §7–§8 for their visual specs.
+- **Landing page — "at a glance"**: 5–6 headline numbers + one signature visual (the collaboration graph), every element linking down into a theme.
+- **Four question-anchored themes**: *The Landscape* ("what exists?" — inventory, breakdowns, a catalogue filterable beyond name search), *People & Community* ("who's behind it?" — the Neo4j collaboration graph), *Health & Activity* ("how alive is it?" — the CHAOSS home; title **ecosystem growth** and **per-repo growth** apart, they are different data cuts), *Research Impact* ("what does it produce?" — the software→papers funnel; Infoscience is a *source*, not a section).
+- **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote.
+- **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.12).
+
+The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
 
 ---
 
@@ -93,7 +97,7 @@ open-pulse-webkit/
 │   ├── PROJECT.md      #   mission + data-source overview
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
-│   └── skills/         #   the 9 skills (frontend-dev + query-* + op-*)
+│   └── skills/         #   the 10 skills (frontend-dev + sdsc-ui-kit + query-* + op-*)
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── AGENTS.md           # this file (canonical conventions)
 ├── AGENTS.md           # generated mirror of AGENTS.md
@@ -133,7 +137,7 @@ If you use TypeScript, keep API response shapes typed in one place and treat tha
 
 ## Design system
 
-Read the `frontend-dev` skill before writing any UI code. Key rules:
+Read the `frontend-dev` skill before writing any UI code. It is the dark-mode Open Pulse variant of the SDSC design system; the companion `sdsc-ui-kit` skill documents the general SDSC brand system (datascience.ch, light-capable) — reach for it on SDSC-branded surfaces that are *not* Open Pulse dashboards. Where the two disagree in this kit, `frontend-dev` wins. Key rules:
 
 - All colors come from `--op-*` CSS custom properties (mirror them into your utility framework's theme if you use one)
 - Never hardcode hex in template markup — canvas/SVG drawing code is the only exception

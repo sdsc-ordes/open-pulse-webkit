@@ -149,7 +149,10 @@ These are **only** used inside the graph canvas and node/edge rendering. They mu
 | Repository   | `#60a5fa` |
 | Commit       | `#fbbf24` |
 | Organisation | `#a78bfa` |
+| Institution  | `#fbbf24` |
 | PullRequest  | `#f472b6` |
+
+`Institution` (a ROR-identified research org, distinct from a GitHub `Organisation`) reuses the amber slot — safe because Commit nodes never co-occur with Institutions in the collaboration graphs that use them.
 
 Source: keep these in a single graph-data module (a `NODE_COLORS` map). All viz code reads from there — no second hex table.
 
@@ -517,6 +520,24 @@ A thin bar at the **very top** of every page (above the §7.1 app header) credit
 
 - `{BUILD_TIMESTAMP}` is injected at **build time** (ISO 8601 UTC, e.g. `2026-06-09T14:32Z`) — never computed in the browser, so it always reflects when the static site was generated. Inject it via your bundler's define/env mechanism or generate it into the HTML at build.
 - Topmost element, full-width, on the elevated surface (`--op-surface-2`), muted text, mono timestamp, and the `openpulse.science` link in `--op-blue-light`. It sits directly above the §7.1 header.
+
+### 7.12 Provenance disclosure — "How is this computed?" (required on data cards)
+
+Every card that shows a number or chart derived from Open Pulse data carries the **same** compact disclosure — one shared component, never bespoke per-section explanations. Four fixed fields: *Source* (Neo4j / GraphDB (SPARQL) / GrimoireLab / GitHub API / Infoscience), *Method* (Graph crawler / git-metadata-extractor (LLM) / Classifier / CHAOSS metrics API / Direct query), *Refresh* (cadence), *Caveats* (honest limitations, e.g. "discipline inferred by classifier, may be wrong").
+
+```html
+<details class="op-provenance">
+  <summary><span aria-hidden="true">ⓘ</span> How is this computed?</summary>
+  <dl>
+    <div><dt>Source</dt><dd class="mono">Neo4j + GrimoireLab</dd></div>
+    <div><dt>Method</dt><dd class="mono">Graph crawler</dd></div>
+    <div><dt>Refresh</dt><dd>Monthly pipeline snapshot; page baked at build time</dd></div>
+    <div><dt>Caveats</dt><dd>Only repos the crawler has walked appear.</dd></div>
+  </dl>
+</details>
+```
+
+Styling: `border-top: 1px solid var(--op-border-subtle)`, 12px text; summary in `--op-text-faint` uppercase `tracking-wide`, hover `--op-blue-light`, no disclosure marker; the `<dl>` a two-column `max-content 1fr` grid with `dt` in 11px `--op-text-faint` uppercase and `dd` in 12px `--op-text-muted`. Reference implementation: `src/components/provenance.ts` in the ENAC dashboard ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac)).
 
 ---
 

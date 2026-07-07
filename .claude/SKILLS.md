@@ -128,3 +128,26 @@ This is framework-neutral D3 guidance for the graph view:
 Run whatever type-check / lint / build your chosen stack provides, from `src/your-web/`, before pushing — CI runs the same and will fail the build on errors. A passing build is a correctness gate, not a feature-correctness gate: still verify UI in the browser via Playwright MCP (see `CLAUDE.md`).
 
 Separately, the agent-config sync is its own gate: after editing anything in `.claude/`, run `node tools/sync-agents.mjs` so `.agents/` + `AGENTS.md` stay in sync (CI `agents-sync` job enforces it).
+
+---
+
+## 9. Build a dashboard from Open Pulse data (the ENAC pattern)
+
+The worked example is [sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac) — a landing page + four question-anchored themes + a coverage panel. When asked for "a dashboard", default to this shape (see `CLAUDE.md` → *Reference outcome*). Rules that came out of building it:
+
+- **One provenance component, everywhere.** Every data card gets the same compact `<details>` disclosure with four fixed fields — *source* (Neo4j / GraphDB / GrimoireLab / GitHub API), *method* (crawler / LLM extractor / classifier / CHAOSS API), *refresh cadence*, *caveats*. Never write bespoke per-section explanations. Visual spec: `frontend-dev` §7.12.
+- **Exclude vendored forks from health metrics.** A fork of `assimp` or `imgui` carries the whole upstream commit history and will swamp the org's own numbers (ENAC: 115k commits → 44k after exclusion). Build the fork set from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf`, exclude it from activity/community series, keep forks in the catalogue but badge them.
+- **Title ecosystem growth and per-repo growth apart.** "More repos over time" and "one project's contributor/commit trajectory" are different data cuts — readers conflate them unless the widget titles say which one they are.
+- **Say "not computable" instead of rendering an empty chart.** E.g. CHAOSS Organizational Diversity needs affiliations the GrimoireLab identities may not have — show a short honest note and link to where the question *is* answerable.
+- **Sparse impact data is a story, not a bug.** Software→publication links are thin until ORCID/CITATION.cff coverage grows; render the chain as a funnel (repos → with metadata → contributors → ORCID-linked → publications linked) and pair it with the coverage panel's to-do lists.
+- **Flag framing calls, don't decide them silently** (e.g. whether to lead with `repositoryType = Software` only): show all by default, add the filter, and put a visible "open decision" banner on the section.
+
+## 10. Bake data snapshots at build time
+
+The static-first data path (`CLAUDE.md` → *Preferred approach*): a `scripts/fetch-data.mjs` in your app queries the stores directly (reusing the `.env` conventions and HTTP transports from the `query-*` skill scripts) and writes typed JSON snapshots into `src/data/`, which pages import at build time. The browser never touches the stores.
+
+- **Scope by GitHub orgs.** A "project" (e.g. a school, a lab cluster) is a set of GitHub organisations. To enumerate a GrimoireLab project's repos, use an OpenSearch `terms` agg on `repo_name` filtered by `project` — the CHAOSS API's `project-repos` endpoint truncates at 150 and ignores paging params.
+- **Typical outputs**: `summary.json` (headline numbers), `repos.json` (catalogue rows), `graph.json` (trimmed nodes/edges for the collaboration graph), `health.json` (monthly series + per-repo table), `impact.json` (funnel + linked articles), `coverage.json` (gap lists per org).
+- **Resolve discipline labels.** `op:discipline` values are Wikidata QIDs — resolve to English labels at fetch time via `wbgetentities` (batch ≤ 45 ids), falling back to the QID.
+- **Trim the graph for readability** in the script, not the component: keep all orgs, repos with ≥ 1 contributor, people connected to ≥ 2 repos plus the top individual contributors; record what was dropped in a `stats` block so the UI can say so.
+- **Stamp every snapshot** with `fetchedAt` + scope metadata, and print row counts as the script runs — silent truncation reads as full coverage.

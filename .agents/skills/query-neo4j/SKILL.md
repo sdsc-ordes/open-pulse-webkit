@@ -105,6 +105,8 @@ Neo4j, never OpenSearch.
 - **PR/issue/review/comment metrics**: always come from the edge types above. Count `DISTINCT u` for "people" and `count(*)` for "events"; there is no event date to bucket by.
 - **`DEPENDS_ON` is large** (~259k). Always scope it to a seed set (`WHERE r.full_name IN $urls`) and add `LIMIT`, or it returns the whole ecosystem.
 - **Affiliations**: `(:User)-[:AFFILIATED_WITH]->(:RorOrg)` mirrors the SPARQL `org:hasMembership` data (default graph or `GRAPH <…/graph/{YYYY-MM}/hybrid>`); institutions are ROR-identified in both stores. See `query-sparql` for default vs named-graph modes.
+- **Fork detection for honest metrics**: `MATCH (o:Org)-[:OWNS]->(r:Repo)-[:FORK_OF]->(p:Repo) WHERE o.login IN $orgs RETURN r.full_name, p.full_name` gives the vendored-fork set (union it with SPARQL `op:isForkOf`). Exclude those repos from commit/contributor series — a forked `assimp`/`imgui` carries the whole upstream history and swamps the org's own numbers (ENAC: 115k → 44k commits).
+- **Repo nodes are thin stubs** (name/owner/id only — no description, stars, or language). Catalogue metadata must come from SPARQL; expect only a subset of crawled repos to be in the metadata graph, and surface the rest as a coverage gap rather than empty columns.
 
 ## Conventions
 

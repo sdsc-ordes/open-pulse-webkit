@@ -215,6 +215,8 @@ A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggreg
 - Repos are **GitHub-only**: `repo <owner> <repo>` → `/repositories/github.com/...`.
 - Projects are discipline/topic buckets of repos. **The set and count change over time, so always read it from `projects` — never hardcode a number.** At time of writing the largest are `info-eng` (~109 repos), `bioeng` (~95), `stats` (~63), with domain-relevant ones like `protein_ai_ecosystem` (~26), `bio` (~42), `chem` (~10). Use the exact `project` slug returned by `projects` (e.g. `protein_ai_ecosystem`, not `protein-ai`). `project-repos <project>` returns the project header plus both a `metrics[]` summary and a `repositories[]` list.
 - A browsable UI to explore first: `https://openpulse.epfl.ch/chaoss` (same auth).
+- **`project-repos` truncates at 150 repositories** (`truncated: true`) and ignores `limit`/`offset` params. For a project's full membership, aggregate OpenSearch on `repo_name` filtered by `project` (see `query-opensearch`); keep `project-repos` for its per-repo metric values table.
+- **Project-level `aggregate.value` can be null even when per-repo values exist** (e.g. `absence_factor`, `licenses_declared` at project scope) — read `aggregate.n_with_value` before trusting a project number, and mind `approx_note` (contributor sums double-count people active in several repos).
 
 ## Conventions
 
