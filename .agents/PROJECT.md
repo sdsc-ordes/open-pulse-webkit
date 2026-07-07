@@ -15,7 +15,7 @@ Two audiences read this codebase:
 
 When deciding between "this is a one-off feature" vs. "this is a pattern others will follow", err toward the second. Naming, file layout, abstractions, and design tokens should generalise.
 
-**Framework-neutral by design.** The template deliberately does not commit to a UI framework. The web app lives in `src/your-web/` and the downstream user picks their own stack. What the template *does* provide and standardise is framework-independent: the **Open Pulse query skills** and the **SDSC design system** (the `frontend-dev` skill). Keep those stable; treat the app shell as replaceable.
+**Framework-neutral by design.** The template deliberately does not commit to a UI framework. The web app lives in `src/your-web/` and the downstream user picks their own stack. What the template *does* provide and standardise is framework-independent: the **Open Pulse query skills** and the **SDSC design system** (the `sdsc-ui-kit` skill plus its dark dashboard delta, `frontend-dev`). Keep those stable; treat the app shell as replaceable.
 
 ---
 
@@ -127,7 +127,7 @@ These views are intended both as working tools and as **pattern examples**. They
 | **List / detail** (e.g. pipeline runs) | List + detail; status badges; tables; shared shell |
 | **Card grid** (e.g. service health) | Card grid; mixed-status surfaces (containers, endpoints, smoke tests) |
 
-Together they cover the three layout archetypes a downstream user is most likely to need (full-page canvas, list/detail, card grid). Their visual specs live in the `frontend-dev` skill (§7–§8).
+Together they cover the three layout archetypes a downstream user is most likely to need (full-page canvas, list/detail, card grid). Their anatomy lives in the `sdsc-ui-kit` skill (`references/layouts.md`); the dark dashboard mappings live in the `frontend-dev` skill (§7–§8).
 
 ---
 
@@ -158,7 +158,7 @@ If a change makes one of these journeys harder (e.g. couples the design system t
 
 - **Conventions, stack-neutral dev workflow, what-not-to-do:** `AGENTS.md` (repo root)
 - **Concrete how-tos** (add page, add endpoint, add token): `.agents/SKILLS.md`
-- **Visual rules**: the `frontend-dev` skill (`.agents/skills/frontend-dev/SKILL.md`)
+- **Visual rules**: the `sdsc-ui-kit` skill (brand ground truth) + the `frontend-dev` skill (dark dashboard delta)
 - **Backend endpoints & credentials**: `.env.example`
 - **Data store query skills**: `.agents/skills/query-{neo4j,sparql,opensearch}/SKILL.md`
 - **CHAOSS health metrics**: `.agents/skills/query-chaoss/SKILL.md` (featured dashboard slugs above)

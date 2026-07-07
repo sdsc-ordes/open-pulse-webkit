@@ -93,7 +93,7 @@ A brand is delivered to the agent **as a skill** (`.claude/skills/<name>/`), so 
 | Skill | What it is | Reach for it when |
 |---|---|---|
 | **`sdsc-ui-kit`** *(default)* | The general SDSC brand system from [datascience.ch](https://datascience.ch) — colour tokens, typography, buttons, form inputs, layout patterns, dark mode | Any SDSC-branded page or app built from this kit |
-| **`frontend-dev`** | The permanent-dark **Open Pulse dashboard** translation of that system: `--op-*` tokens on a near-black canvas, the graph-explorer canvas rules, and the standardized "How is this computed?" provenance disclosure | Building a data dashboard (the reference outcome in `CLAUDE.md`) |
+| **`frontend-dev`** | A permanent-dark **theme delta on top of `sdsc-ui-kit`** for the Open Pulse dashboard: `--op-*` tokens on a near-black canvas, the graph-explorer canvas rules, the standardized "How is this computed?" provenance disclosure, and a named list of deliberate deviations from the base brand | Building a data dashboard (the reference outcome in `CLAUDE.md`) — read `sdsc-ui-kit` first |
 
 Both are **framework-agnostic** — the spec is CSS custom properties plus plain HTML/CSS patterns, so it maps onto any stack (vanilla CSS, Tailwind, React, Svelte, Vue, web components, …). The rules the agent is instructed to hold to, wherever the UI comes from:
 

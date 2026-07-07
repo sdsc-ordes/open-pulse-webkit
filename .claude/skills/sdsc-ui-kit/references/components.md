@@ -152,7 +152,7 @@ border: 2px solid #E5E5E5;
 border-radius: 4px;
 background: #FFFFFF;
 /* checked */  background: #5561a6; border-color: #5561a6;   /* + checkmark */
-/* focus */    box-shadow: 0 0 0 2px rgba(84,97,166,0.2);
+/* focus */    box-shadow: 0 0 0 2px rgba(85,97,166,0.2);
 /* disabled */ background: #F4F3F8; border-color: #E5E5E5; opacity: 0.5; cursor: not-allowed;
 ```
 

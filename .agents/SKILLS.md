@@ -38,7 +38,7 @@ myFeature: {
 ## 2. Add a new page
 
 1. Create the route in `src/your-web/` using your framework's routing convention.
-2. Wrap it in the shared app shell: the **required attribution bar** (§7.11, `Built using openpulse.science at <build timestamp>`) at the very top, then the header (§7.1) and footer (§7.2) from the `frontend-dev` skill; list/detail pages use the content+sidebar layout (§7.8).
+2. Wrap it in the shared app shell: the **required attribution bar** (§7.4, `Built using openpulse.science at <build timestamp>`) at the very top, then the header (§7.1) and footer (§7.2) from the `frontend-dev` skill; list/detail pages use the content+sidebar layout (`sdsc-ui-kit` layouts, dark mapping in `frontend-dev` §7.3).
 3. Use the design system: `〇 LABEL` section blocks (§5), cards/tables/badges (§6), `--op-*` tokens only.
 4. Add a nav entry to the header, following the existing active-link highlight pattern.
 5. Wire up data using the pattern in §1 if the page needs it.
@@ -90,15 +90,15 @@ Keep the two definitions (if you have both) in sync.
 
 ## 5. Write a card / table / badge
 
-Always copy the exact markup from the `frontend-dev` skill §6 component patterns rather than inventing new markup. Adapt the HTML to your framework's component syntax, but keep classes, tokens, and structure. Key patterns:
+Component **anatomy** (padding, borders, states, transitions) lives in `sdsc-ui-kit` `references/components.md`; the dashboard's **dark values and deviations** live in `frontend-dev` §5–§6. Copy from there rather than inventing new markup — adapt the HTML to your framework's component syntax, but keep classes, tokens, and structure. Key patterns:
 
 **Card:** `bg-op-surface border border-op-border rounded-none p-8`
 
-**Status badge (succeeded):** `color:var(--op-success); background:rgba(74,222,128,0.12)`, `rounded-none`, uppercase, `tracking-wide`
+**Status badge (succeeded):** `color:var(--op-success); background:rgba(52,211,153,0.12)`, `rounded` (4px), uppercase, `tracking-wide`
 
 **Section label (`〇 LABEL`):** `var(--op-text-muted)`, 14px Switzer Medium, uppercase, `tracking-wide`
 
-See §6.1–§6.7 and §5 of the skill for the full markup.
+See `frontend-dev` §5–§6 for the full dark markup.
 
 ---
 
@@ -135,7 +135,7 @@ Separately, the agent-config sync is its own gate: after editing anything in `.a
 
 Applies to any **scope** — a school, an institute, a lab cluster, a topic/discipline, a funding programme, or a single organisation. When asked for "a dashboard", default to the shape in `AGENTS.md` → *Reference outcome*: a landing page ("at a glance" — required), a handful of question-anchored drill-down themes adapted to the scope (see the example structures there), and a coverage panel. Rules that generalise across scopes:
 
-- **One provenance component, everywhere.** Every data card gets the same compact `<details>` disclosure with four fixed fields — *source* (Neo4j / GraphDB / GrimoireLab / GitHub API), *method* (crawler / LLM extractor / classifier / CHAOSS API), *refresh cadence*, *caveats*. Never write bespoke per-section explanations. Visual spec: `frontend-dev` §7.12.
+- **One provenance component, everywhere.** Every data card gets the same compact `<details>` disclosure with four fixed fields — *source* (Neo4j / GraphDB / GrimoireLab / GitHub API), *method* (crawler / LLM extractor / classifier / CHAOSS API), *refresh cadence*, *caveats*. Never write bespoke per-section explanations. Visual spec: `frontend-dev` §7.5.
 - **Exclude vendored forks from health metrics.** A fork of `assimp` or `imgui` carries the whole upstream commit history and can inflate a scope's commit counts several-fold. Build the fork set from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf`, exclude it from activity/community series, keep forks in the catalogue but badge them.
 - **Title ecosystem growth and per-repo growth apart.** "More repos over time" and "one project's contributor/commit trajectory" are different data cuts — readers conflate them unless the widget titles say which one they are.
 - **Say "not computable" instead of rendering an empty chart.** E.g. CHAOSS Organizational Diversity needs affiliations the GrimoireLab identities may not have — show a short honest note and link to where the question *is* answerable.

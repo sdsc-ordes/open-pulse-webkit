@@ -31,7 +31,7 @@ No framework is mandated, but the template carries a **default posture**. Lean t
   2. **Optimised static assets** — serve **web-optimised images**: responsive sizes, modern formats (AVIF/WebP), explicit dimensions, lazy loading. Never ship original-resolution images.
   3. **DuckDB-Wasm over Parquet** — for larger or queryable datasets, ship `.parquet` files as static assets and query them **in-browser** with [DuckDB-Wasm](https://duckdb.org/docs/stable/clients/wasm/overview). Stays fully static (no backend), columnar + compressed, with fast client-side filtering/aggregation.
 - **Interactive visualisation** — use **client-side JS** for plots and graphs. Default to **[D3.js](https://d3js.org)** for bespoke/interactive charts and the force-directed graph; other JS viz libraries are fine where they fit. Charts should be **interactive** (hover, zoom, filter) — not static images.
-- **Attribution bar (required).** Every page renders a top bar reading **`Built using openpulse.science at <timestamp>`**, where `<timestamp>` is the **build time** (ISO 8601 UTC, injected at build — never computed in the browser). Link `openpulse.science`. Visual spec: `frontend-dev` skill §7.11.
+- **Attribution bar (required).** Every page renders a top bar reading **`Built using openpulse.science at <timestamp>`**, where `<timestamp>` is the **build time** (ISO 8601 UTC, injected at build — never computed in the browser). Link `openpulse.science`. Visual spec: `frontend-dev` skill §7.4.
 
 These are defaults that make the GitHub-Pages publishing path (see README) the path of least resistance. If a request genuinely needs a server runtime or live queries, say so and fall back to the server-side proxy pattern below.
 
@@ -47,9 +47,9 @@ Most sites built from this kit are **scoped dashboards**: they tell the open-sou
   - *Single organisation or product*: catalogue & releases · community health · adoption/usage · dependencies.
   - *Topic or discipline*: inventory & technology breakdown · key projects · activity over time · who works on it across institutions.
 - **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote — every scope has them.
-- **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.12).
+- **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.5).
 
-Whatever theme set you pick, title growth widgets precisely — **ecosystem growth** (more repos over time) and **per-repo growth** (one project's trajectory) are different data cuts. The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.claude/SKILLS.md` §9–§10.
+Whatever theme set you pick, title growth widgets precisely — **ecosystem growth** (more repos over time) and **per-repo growth** (one project's trajectory) are different data cuts. The underlying layout archetypes — full-page graph canvas, list/detail, card grid — live in the `sdsc-ui-kit` skill (`references/layouts.md`), with their dark mappings in the `frontend-dev` skill §7–§8. Data-side recipes live in `.claude/SKILLS.md` §9–§10.
 
 ---
 
@@ -144,8 +144,8 @@ Design systems are delivered to agents **as skills** — a brand lives in `.clau
 
 This template ships two, and **the SDSC brand system (`sdsc-ui-kit`) is the default**:
 
-- **`sdsc-ui-kit`** — the general SDSC design system (datascience.ch: tokens, typography, components, layouts, dark mode). Read it before writing any UI code; it is the default look for apps built from this kit.
-- **`frontend-dev`** — the permanent-dark **Open Pulse dashboard** translation of that system. Reach for it when building the dashboard reference outcome above (dark canvas, `--op-*` tokens, graph-explorer specifics §8, provenance disclosure §7.12). Its component and layout archetypes (§5–§8) apply under either theme.
+- **`sdsc-ui-kit`** — the general SDSC design system (datascience.ch: tokens, typography, components, layouts, dark mode). Read it before writing any UI code; it is the default look for apps built from this kit, and the **ground truth for all brand values** (colours, scales, component anatomy).
+- **`frontend-dev`** — the permanent-dark **Open Pulse dashboard** theme, a *delta on top of* `sdsc-ui-kit` (not a second system). It defines the `--op-*` dark tokens, the dashboard-only components (attribution bar §7.4, provenance disclosure §7.5, graph explorer §8), and a named list of deliberate deviations from the base kit (§1.2). Reach for it when building the dashboard reference outcome above; read `sdsc-ui-kit` first.
 
 Rules that hold under both:
 
