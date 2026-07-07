@@ -25,9 +25,9 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 
 | | What it is | Where |
 |---|---|---|
-| 🧠 **Agent skills** | 9 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🧠 **Agent skills** | 10 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
-| 🎨 **Design system** | A dark-mode SDSC visual identity the `frontend-dev` skill enforces, so generated UI looks on-brand | `frontend-dev` skill |
+| 🎨 **Design system** | The SDSC visual identity, delivered as two skills the agent applies so generated UI looks on-brand — see [Styling & the design system](#styling--the-design-system) | `sdsc-ui-kit` + `frontend-dev` skills |
 | 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
 | 🧪 **Playwright MCP** | Browser verification for agents — host (`npx`) or devcontainer (sidecar on `:8931`) | `.mcp.host.json` / `.mcp.docker.json` → `.mcp.json` |
 | 🔑 **Env template** | Documents the Open Pulse endpoints and credentials your skills need | `.env.example` |
@@ -86,6 +86,27 @@ bash tools/image/docker/setup-mcp.sh host   # only if .mcp.json was switched by 
 
 ---
 
+## Styling & the design system
+
+A brand is delivered to the agent **as a skill** (`.claude/skills/<name>/`), so re-branding means swapping a skill — not rewriting app code. The kit ships two:
+
+| Skill | What it is | Reach for it when |
+|---|---|---|
+| **`sdsc-ui-kit`** *(default)* | The general SDSC brand system from [datascience.ch](https://datascience.ch) — colour tokens, typography, buttons, form inputs, layout patterns, dark mode | Any SDSC-branded page or app built from this kit |
+| **`frontend-dev`** | The permanent-dark **Open Pulse dashboard** translation of that system: `--op-*` tokens on a near-black canvas, the graph-explorer canvas rules, and the standardized "How is this computed?" provenance disclosure | Building a data dashboard (the reference outcome in `CLAUDE.md`) |
+
+Both are **framework-agnostic** — the spec is CSS custom properties plus plain HTML/CSS patterns, so it maps onto any stack (vanilla CSS, Tailwind, React, Svelte, Vue, web components, …). The rules the agent is instructed to hold to, wherever the UI comes from:
+
+- **All colours come from tokens** (CSS custom properties; `--op-*` in the dark kit). Never hardcode hex in markup — canvas/SVG drawing code is the only exception.
+- **Fonts:** Space Grotesk for headings, Switzer for all UI text, JetBrains Mono for code/IDs — all loaded from npm packages, no CDN fonts.
+- **Sharp corners** everywhere; only buttons and badges carry a subtle 4 px radius.
+- **Two brand blues are the only interactive chrome colour.** Status colours (success/warning/error) appear only on badges and toasts; the data-viz palette stays inside chart and graph canvases.
+- **Attribution bar** (required): every page tops out with `Built using openpulse.science at <build timestamp>`, the timestamp injected at build time.
+
+**Bring your own brand:** package your design system as a skill with the same layout (`SKILL.md` + `assets/tokens.css` + `references/`) and point your app's `:root` at your token file. The step-by-step recipe is `.claude/SKILLS.md` §11.
+
+---
+
 ## CHAOSS health metrics (featured dashboard)
 
 The hub at `openpulse.epfl.ch` computes **35 CHAOSS metrics** live per GitHub repository (or aggregated per GrimoireLab project) by unifying the three stores. Browse them at [openpulse.epfl.ch/chaoss](https://openpulse.epfl.ch/chaoss); query them via the `query-chaoss` skill. Full API detail is in `.claude/skills/query-chaoss/SKILL.md` and `.claude/PROJECT.md`.
@@ -119,7 +140,7 @@ open-pulse-webkit/
 │   ├── PROJECT.md      #   mission, URLs, data sources + CHAOSS dashboard
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
-│   └── skills/         #   the 9 skills
+│   └── skills/         #   the 10 skills (incl. sdsc-ui-kit + frontend-dev design systems)
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── CLAUDE.md           # repo conventions (canonical)
 ├── AGENTS.md           # generated mirror of CLAUDE.md
