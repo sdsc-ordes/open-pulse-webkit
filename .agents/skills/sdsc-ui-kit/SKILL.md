@@ -8,8 +8,9 @@ description: >-
   plain CSS, and maps onto any web stack (vanilla CSS, Tailwind, React, Svelte,
   Vue, Web Components, shadcn/ui, …). Use when the user asks to build an SDSC
   page, component, or theme, or to make a UI match SDSC brand. Do not use for
-  scientific charts or data-visualization colour choices — use the sdsc-plotting
-  skill for plots and charts.
+  scientific charts or data-visualization colour choices — for Open Pulse
+  dashboards use the `openpulse-dark-theme` skill (§2.6); otherwise follow the
+  project's plotting guidance.
 ---
 
 # SDSC UI Design Kit
@@ -42,8 +43,8 @@ Apply this skill whenever generating or reviewing UI for an SDSC product:
 pages, components, themes, or layout. It defines the brand tokens, component
 styling rules, and layout patterns the output must follow.
 
-For scientific plots, charts, and data-visualization colour palettes, use the
-**sdsc-plotting** skill instead — chart colours differ from interface colours.
+For scientific plots, charts, and data-visualization colour palettes, follow the
+project's plotting guidance (for Open Pulse dashboards: see `openpulse-dark-theme` §2.6).
 
 ## Core rules (always apply)
 

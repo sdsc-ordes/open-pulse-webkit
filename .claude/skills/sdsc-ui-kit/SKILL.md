@@ -7,9 +7,10 @@ description: >-
   mode. Framework-agnostic: the spec is expressed as CSS custom properties and
   plain CSS, and maps onto any web stack (vanilla CSS, Tailwind, React, Svelte,
   Vue, Web Components, shadcn/ui, …). Use when the user asks to build an SDSC
-page, component, or theme, or to make a UI match SDSC brand. Do not use for
-scientific charts or data-visualization colour choices — for Open Pulse dashboards
-use the `openpulse-dark-theme` skill (§2.6); otherwise follow the project's plotting guidance.
+  page, component, or theme, or to make a UI match SDSC brand. Do not use for
+  scientific charts or data-visualization colour choices — for Open Pulse
+  dashboards use the `openpulse-dark-theme` skill (§2.6); otherwise follow the
+  project's plotting guidance.
 ---
 
 # SDSC UI Design Kit

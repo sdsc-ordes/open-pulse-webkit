@@ -48,6 +48,7 @@ transition.
 
 ### Primary
 
+> Implementation note: the hex values below are shown for reference; in actual code use the CSS variables (e.g. `var(--primary-color)`, `var(--secondary-color)`) rather than hard-coding hex.
 ```css
 background: #5561a6;
 color: #FFFFFF;
