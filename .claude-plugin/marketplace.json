@@ -1,0 +1,16 @@
+{
+  "name": "open-pulse",
+  "owner": {
+    "name": "SDSC ORDES",
+    "email": "contact@datascience.ch"
+  },
+  "plugins": [
+    {
+      "name": "open-pulse",
+      "source": "./",
+      "description": "Build dashboards on the Open Pulse platform — a guided /open-pulse:new-dashboard wizard, query skills for Neo4j/SPARQL/OpenSearch/CHAOSS, and the hub op-* skills.",
+      "category": "data",
+      "keywords": ["open-pulse", "dashboard", "neo4j", "sparql", "opensearch", "chaoss", "sdsc"]
+    }
+  ]
+}
