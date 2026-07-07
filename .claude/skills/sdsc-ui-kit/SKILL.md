@@ -42,8 +42,8 @@ Apply this skill whenever generating or reviewing UI for an SDSC product:
 pages, components, themes, or layout. It defines the brand tokens, component
 styling rules, and layout patterns the output must follow.
 
-For scientific plots, charts, and data-visualization colour palettes, use the
-**sdsc-plotting** skill instead — chart colours differ from interface colours.
+For scientific plots, charts, and data-visualization colour palettes, follow the
+project's plotting guidance (for Open Pulse dashboards: see `openpulse-dark-theme` §2.6).
 
 ## Core rules (always apply)
 
