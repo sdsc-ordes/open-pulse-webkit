@@ -79,7 +79,7 @@ Numbers: Space Grotesk weight 600, 48–64px, primary colour. Labels: Switzer 40
 ### 6. Full-width banner
 
 ```html
-<section class="banner bg-[#dddeec]">
+<section class="banner" style="background: var(--light-blue-bg)">
   <div class="container"><h2>Banner Headline</h2><p>Supporting text</p><button>Take Action</button></div>
 </section>
 ```
