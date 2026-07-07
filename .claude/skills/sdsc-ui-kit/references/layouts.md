@@ -83,7 +83,7 @@ Numbers: Space Grotesk weight 600, 48–64px, primary colour. Labels: Switzer 40
   <div class="container"><h2>Banner Headline</h2><p>Supporting text</p><button>Take Action</button></div>
 </section>
 ```
-Background uses the Light Blue Background `#dddeec`.
+Background uses the Light Blue Background token (`--light-blue-bg`).
 
 ### 7. List layout
 
