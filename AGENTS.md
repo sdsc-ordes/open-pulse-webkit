@@ -39,14 +39,14 @@ These are defaults that make the GitHub-Pages publishing path (see README) the p
 
 ## Reference outcome (what a finished dashboard looks like)
 
-The worked example is the **ENAC dashboard** ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac), built from this template). Its shape is the recommended story for any Open Pulse dashboard:
+Most sites built from this kit are **scoped dashboards**: they tell the open-source story of *some slice* of the Open Pulse data — a school, an institute, a lab cluster, a topic/discipline, a funding programme, or a single organisation. Whatever the scope, the recommended shape is the same:
 
-- **Landing page — "at a glance"**: 5–6 headline numbers + one signature visual (the collaboration graph), every element linking down into a theme.
-- **Four question-anchored themes**: *The Landscape* ("what exists?" — inventory, breakdowns, a catalogue filterable beyond name search), *People & Community* ("who's behind it?" — the Neo4j collaboration graph), *Health & Activity* ("how alive is it?" — the CHAOSS home; title **ecosystem growth** and **per-repo growth** apart, they are different data cuts), *Research Impact* ("what does it produce?" — the software→papers funnel; Infoscience is a *source*, not a section).
-- **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote.
+- **Landing page — "at a glance"**: 5–6 headline numbers + one signature visual, every element linking down into a theme. A reader gets the gist without scrolling through everything.
+- **A handful of question-anchored themes** (not a flat widget list). The four questions that generalise across scopes: **what exists?** (inventory, breakdowns, a catalogue filterable beyond name search), **who's behind it?** (the collaboration network from Neo4j), **how alive and healthy is it?** (the CHAOSS home; title **ecosystem growth** and **per-repo growth** apart — they are different data cuts), **what does it produce?** (outputs and impact — for research scopes the software→papers funnel, with publication systems like Infoscience as a *source*, not a section; for other scopes whatever the downstream product is).
+- **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote — every scope has them.
 - **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.12).
 
-The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
+Adapt the theme set to the scope (a topic dashboard may not need a people theme; a single-org dashboard may add a releases theme) — keep the question-anchored structure and the coverage panel. A complete worked example is the **ENAC dashboard** ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac), built from this template). The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
 
 ---
 
@@ -137,9 +137,16 @@ If you use TypeScript, keep API response shapes typed in one place and treat tha
 
 ## Design system
 
-Read the `frontend-dev` skill before writing any UI code. It is the dark-mode Open Pulse variant of the SDSC design system; the companion `sdsc-ui-kit` skill documents the general SDSC brand system (datascience.ch, light-capable) — reach for it on SDSC-branded surfaces that are *not* Open Pulse dashboards. Where the two disagree in this kit, `frontend-dev` wins. Key rules:
+Design systems are delivered to agents **as skills** — a brand lives in `.agents/skills/<name>/` as a `SKILL.md` plus token/reference files, and swapping brands means swapping the skill, not rewriting app code (see `.agents/SKILLS.md` §11 for how to integrate your own).
 
-- All colors come from `--op-*` CSS custom properties (mirror them into your utility framework's theme if you use one)
+This template ships two, and **the SDSC brand system (`sdsc-ui-kit`) is the default**:
+
+- **`sdsc-ui-kit`** — the general SDSC design system (datascience.ch: tokens, typography, components, layouts, dark mode). Read it before writing any UI code; it is the default look for apps built from this kit.
+- **`frontend-dev`** — the permanent-dark **Open Pulse dashboard** translation of that system. Reach for it when building the dashboard reference outcome above (dark canvas, `--op-*` tokens, graph-explorer specifics §8, provenance disclosure §7.12). Its component and layout archetypes (§5–§8) apply under either theme.
+
+Rules that hold under both:
+
+- All colors come from CSS custom properties (`--op-*` in the dark kit; mirror them into your utility framework's theme if you use one)
 - Never hardcode hex in template markup — canvas/SVG drawing code is the only exception
 - Fonts: Space Grotesk for headings/wordmark, Switzer for all UI text, JetBrains Mono (`.mono`) for code/IDs
 - Sharp corners everywhere (`rounded-none`) — buttons and badges use `rounded` (4px) only

@@ -131,23 +131,43 @@ Separately, the agent-config sync is its own gate: after editing anything in `.c
 
 ---
 
-## 9. Build a dashboard from Open Pulse data (the ENAC pattern)
+## 9. Build a scoped dashboard (landing + themes + coverage)
 
-The worked example is [sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac) — a landing page + four question-anchored themes + a coverage panel. When asked for "a dashboard", default to this shape (see `CLAUDE.md` → *Reference outcome*). Rules that came out of building it:
+Applies to any **scope** — a school, an institute, a lab cluster, a topic/discipline, a funding programme, or a single organisation. When asked for "a dashboard", default to the shape in `CLAUDE.md` → *Reference outcome*: a landing page, a handful of question-anchored themes adapted to the scope, and a coverage panel. Rules that generalise across scopes (worked example: [sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac)):
 
 - **One provenance component, everywhere.** Every data card gets the same compact `<details>` disclosure with four fixed fields — *source* (Neo4j / GraphDB / GrimoireLab / GitHub API), *method* (crawler / LLM extractor / classifier / CHAOSS API), *refresh cadence*, *caveats*. Never write bespoke per-section explanations. Visual spec: `frontend-dev` §7.12.
-- **Exclude vendored forks from health metrics.** A fork of `assimp` or `imgui` carries the whole upstream commit history and will swamp the org's own numbers (ENAC: 115k commits → 44k after exclusion). Build the fork set from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf`, exclude it from activity/community series, keep forks in the catalogue but badge them.
+- **Exclude vendored forks from health metrics.** A fork of `assimp` or `imgui` carries the whole upstream commit history and will swamp the scope's own numbers (in the ENAC case: 115k commits → 44k after exclusion). Build the fork set from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf`, exclude it from activity/community series, keep forks in the catalogue but badge them.
 - **Title ecosystem growth and per-repo growth apart.** "More repos over time" and "one project's contributor/commit trajectory" are different data cuts — readers conflate them unless the widget titles say which one they are.
 - **Say "not computable" instead of rendering an empty chart.** E.g. CHAOSS Organizational Diversity needs affiliations the GrimoireLab identities may not have — show a short honest note and link to where the question *is* answerable.
-- **Sparse impact data is a story, not a bug.** Software→publication links are thin until ORCID/CITATION.cff coverage grows; render the chain as a funnel (repos → with metadata → contributors → ORCID-linked → publications linked) and pair it with the coverage panel's to-do lists.
-- **Flag framing calls, don't decide them silently** (e.g. whether to lead with `repositoryType = Software` only): show all by default, add the filter, and put a visible "open decision" banner on the section.
+- **Sparse impact data is a story, not a bug.** Output links (software→publications, software→datasets, …) are thin until identifier coverage (ORCID, CITATION.cff, DOIs) grows; render the chain as a funnel (repos → with metadata → contributors → identifier-linked → outputs linked) and pair it with the coverage panel's to-do lists.
+- **Flag framing calls, don't decide them silently** (e.g. whether to lead with `repositoryType = Software` only, or whether to count student repos): show all by default, add the filter, and put a visible "open decision" banner on the section.
 
 ## 10. Bake data snapshots at build time
 
 The static-first data path (`CLAUDE.md` → *Preferred approach*): a `scripts/fetch-data.mjs` in your app queries the stores directly (reusing the `.env` conventions and HTTP transports from the `query-*` skill scripts) and writes typed JSON snapshots into `src/data/`, which pages import at build time. The browser never touches the stores.
 
-- **Scope by GitHub orgs.** A "project" (e.g. a school, a lab cluster) is a set of GitHub organisations. To enumerate a GrimoireLab project's repos, use an OpenSearch `terms` agg on `repo_name` filtered by `project` — the CHAOSS API's `project-repos` endpoint truncates at 150 and ignores paging params.
+- **Define the scope first, as data.** A scope resolves to one of: a set of GitHub organisations (Neo4j `OWNS`), a GrimoireLab project tag, a SPARQL facet (`op:discipline`, `op:ownedBy`, `org:unitOf`), or an explicit repo list. To enumerate a GrimoireLab project's repos, use an OpenSearch `terms` agg on `repo_name` filtered by `project` — the CHAOSS API's `project-repos` endpoint truncates at 150 and ignores paging params.
 - **Typical outputs**: `summary.json` (headline numbers), `repos.json` (catalogue rows), `graph.json` (trimmed nodes/edges for the collaboration graph), `health.json` (monthly series + per-repo table), `impact.json` (funnel + linked articles), `coverage.json` (gap lists per org).
 - **Resolve discipline labels.** `op:discipline` values are Wikidata QIDs — resolve to English labels at fetch time via `wbgetentities` (batch ≤ 45 ids), falling back to the QID.
 - **Trim the graph for readability** in the script, not the component: keep all orgs, repos with ≥ 1 contributor, people connected to ≥ 2 repos plus the top individual contributors; record what was dropped in a `stats` block so the UI can say so.
 - **Stamp every snapshot** with `fetchedAt` + scope metadata, and print row counts as the script runs — silent truncation reads as full coverage.
+
+## 11. Integrate your own design system (as a skill)
+
+A brand is delivered to agents as a skill directory, not as app code — swapping brands means swapping the skill. `sdsc-ui-kit` is the reference layout; mirror it:
+
+```
+.claude/skills/<your-brand>/
+├── SKILL.md                      # entry point: when-to-use frontmatter + the design language
+├── assets/tokens.css             # the CSS custom properties, copy-pasteable into an app
+└── references/
+    ├── design-tokens.md          # every token with value + role (the contract)
+    ├── components.md             # canonical markup/CSS per component
+    └── layouts.md                # page-level archetypes
+```
+
+1. **Express everything as CSS custom properties + plain CSS.** No framework assumptions — utility-class names are hints, not requirements. `assets/tokens.css` must be usable verbatim as an app's `:root` block.
+2. **Write the `SKILL.md` frontmatter as a trigger**, not a summary: say *when* an agent should reach for the skill ("when building UI for X…") and when not to.
+3. **State the ground truth.** Name the authoritative source (a Figma file, a brand PDF, a production site) and its date, so future edits know what wins a dispute.
+4. **Then point the app at it**: replace the token values in your global stylesheet's `:root` (and your utility framework's theme config, if any) with the new skill's `assets/tokens.css`. The `--op-*` naming convention in this kit exists so this is a one-file change — don't rename tokens per-brand in app code.
+5. Update the *Design system* section of `CLAUDE.md` to name the new skill as the default, and run `node tools/sync-agents.mjs`.
