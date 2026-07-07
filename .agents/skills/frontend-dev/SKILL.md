@@ -537,7 +537,7 @@ Every card that shows a number or chart derived from Open Pulse data carries the
 </details>
 ```
 
-Styling: `border-top: 1px solid var(--op-border-subtle)`, 12px text; summary in `--op-text-faint` uppercase `tracking-wide`, hover `--op-blue-light`, no disclosure marker; the `<dl>` a two-column `max-content 1fr` grid with `dt` in 11px `--op-text-faint` uppercase and `dd` in 12px `--op-text-muted`. Reference implementation: `src/components/provenance.ts` in the ENAC dashboard ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac)).
+Styling: `border-top: 1px solid var(--op-border-subtle)`, 12px text; summary in `--op-text-faint` uppercase `tracking-wide`, hover `--op-blue-light`, no disclosure marker; the `<dl>` a two-column `max-content 1fr` grid with `dt` in 11px `--op-text-faint` uppercase and `dd` in 12px `--op-text-muted`. Build it once as a shared component (e.g. `src/components/provenance.ts`) and use it on every data card.
 
 ---
 

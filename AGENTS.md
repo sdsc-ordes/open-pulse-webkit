@@ -41,12 +41,15 @@ These are defaults that make the GitHub-Pages publishing path (see README) the p
 
 Most sites built from this kit are **scoped dashboards**: they tell the open-source story of *some slice* of the Open Pulse data — a school, an institute, a lab cluster, a topic/discipline, a funding programme, or a single organisation. Whatever the scope, the recommended shape is the same:
 
-- **Landing page — "at a glance"**: 5–6 headline numbers + one signature visual, every element linking down into a theme. A reader gets the gist without scrolling through everything.
-- **A handful of question-anchored themes** (not a flat widget list). The four questions that generalise across scopes: **what exists?** (inventory, breakdowns, a catalogue filterable beyond name search), **who's behind it?** (the collaboration network from Neo4j), **how alive and healthy is it?** (the CHAOSS home; title **ecosystem growth** and **per-repo growth** apart — they are different data cuts), **what does it produce?** (outputs and impact — for research scopes the software→papers funnel, with publication systems like Infoscience as a *source*, not a section; for other scopes whatever the downstream product is).
+- **Landing page — "at a glance"** (required): 5–6 headline numbers + one signature visual, every element linking down into a drill-down page. A reader gets the gist without scrolling through everything.
+- **A handful of drill-down themes** (not a flat widget list), each anchored to one question a reader would actually ask. Example structures:
+  - *Research scope (school, institute, lab cluster)*: what exists? (inventory + filterable catalogue) · who's behind it? (the collaboration network from Neo4j) · how alive and healthy is it? (the CHAOSS home) · what does it produce? (the software→papers funnel, with publication systems as a *source*, not a section).
+  - *Single organisation or product*: catalogue & releases · community health · adoption/usage · dependencies.
+  - *Topic or discipline*: inventory & technology breakdown · key projects · activity over time · who works on it across institutions.
 - **A "What's missing?" coverage panel**: metadata gaps as an actionable to-do list, not a footnote — every scope has them.
 - **A standardized "How is this computed?" disclosure** (source / method / refresh cadence / caveats) on every data card — one shared component, never bespoke per-section text (`frontend-dev` §7.12).
 
-Adapt the theme set to the scope (a topic dashboard may not need a people theme; a single-org dashboard may add a releases theme) — keep the question-anchored structure and the coverage panel. A complete worked example is the **ENAC dashboard** ([sdsc-ordes/open-pulse-enac](https://github.com/sdsc-ordes/open-pulse-enac), built from this template). The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
+Whatever theme set you pick, title growth widgets precisely — **ecosystem growth** (more repos over time) and **per-repo growth** (one project's trajectory) are different data cuts. The underlying layout archetypes — full-page graph canvas, list/detail, card grid — are specced in the `frontend-dev` skill §7–§8. Data-side recipes live in `.agents/SKILLS.md` §9–§10.
 
 ---
 

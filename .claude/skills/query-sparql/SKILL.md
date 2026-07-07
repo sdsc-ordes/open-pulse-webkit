@@ -142,7 +142,7 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 - **Most affiliations hang off ORCIDs, not GitHub URLs.** A GitHub-only contributor resolves an institution only if an ORCID bridges to their GitHub *and* that ORCID has a membership. Of typical external (non-EPFL) contributors, few do — expect partial coverage and consider the GitHub-profile `company` as a soft fallback.
 - **Repo subjects are typed `schema:SoftwareSourceCode`**, not `op:Repository` — `?r a op:Repository` matches nothing. `op:repositoryType` (Software / Data / …) is a separate property, not the rdf:type.
 - **`op:discipline` values are Wikidata QIDs** (`http://www.wikidata.org/entity/Q…`). Resolve English labels at build time via the Wikidata `wbgetentities` API (batch ≤ 45 ids), falling back to the QID.
-- **Expect software→publication links to be sparse** for org scopes whose contributors aren't ORCID-linked yet (ENAC at first extraction: 1 direct `schema:citation`, 0 orcid-authored articles). Render the chain as a funnel with the coverage gaps spelled out, not as an empty chart.
+- **Expect software→publication links to be sparse** for org scopes whose contributors aren't ORCID-linked yet — a first extraction can yield near-zero direct `schema:citation` or orcid-authored links. Render the chain as a funnel with the coverage gaps spelled out, not as an empty chart.
 
 ## Conventions
 
