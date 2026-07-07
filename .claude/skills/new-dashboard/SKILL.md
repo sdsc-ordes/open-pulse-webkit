@@ -38,7 +38,12 @@ Then get the concrete scope: ask for the GitHub org(s)/repos, ROR institution, o
 
 ## Stage 2 — Themes
 
-Propose 3–5 drill-down themes matched to their scope type, phrased as questions **the Stage 1 viewer would actually ask** (e.g. *what exists? · who's behind it? · how healthy is it? · what does it produce?* for a research scope — see `CLAUDE.md` §*Reference outcome* for the per-scope structures). Let the story/stats answer shape the framing: for storytelling, order the themes as chapters with a one-line takeaway each; for stats, present them as metric groups. One AskUserQuestion call, `multiSelect: true`: which themes go in v1? Always include the two fixed elements in your plan regardless of the answer: the **at-a-glance landing page** and the **"What's missing?" coverage panel**.
+First offer the reference skeleton. One question: **"Structure the dashboard on the proven skeleton?"** Options: "Yes — landing page + the 4 standard themes (Recommended)" · "Start from the skeleton but adapt the themes" · "No — design a custom theme set with me". The skeleton lives in `references/dashboard-skeleton.md` next to this file — read it before continuing when either of the first two is chosen. Its four themes: **The Landscape** (*what exists?*) · **People & Community** (*who's behind it?*) · **Health & Activity** (*how alive and healthy is it?* — the CHAOSS home) · **Research Impact** (*what does it produce?*).
+
+- **Skeleton (or adapted):** confirm with one `multiSelect: true` question which of the four themes go in v1, and ask the skeleton's flagged framing decision — show all repository types, or lead with Software only? Never decide that silently.
+- **Custom:** propose 3–5 drill-down themes matched to their scope type, phrased as questions **the Stage 1 viewer would actually ask** (see `CLAUDE.md` §*Reference outcome* for the per-scope structures), then confirm with `multiSelect: true`.
+
+Either way, let the story/stats answer shape the framing — for storytelling, order the themes as chapters with a one-line takeaway each; for stats, present them as metric groups — and always include the two fixed elements regardless of the answer: the **at-a-glance landing page** and the **"What's missing?" coverage panel**.
 
 ## Stage 3 — Data reconnaissance (do the work, then report)
 
