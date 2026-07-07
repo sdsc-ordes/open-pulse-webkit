@@ -97,6 +97,9 @@ Run `indices` first if anything above looks stale; backends get reloaded.
 - **Code churn**: `sum(lines_added)` + `sum(lines_removed)`.
 - **Bus factor**: `terms(author_uuid, size 250)` → in code, count top authors covering >50% of commits.
 - **Time series**: `date_histogram(grimoire_creation_date, calendar_interval=month)` with `sum(lines_*)` sub-aggs. **New contributors**: `terms(author_uuid, size N)` + `min(grimoire_creation_date)`, then bucket each author's first-commit month in code. Commits & churn are additive → re-aggregate month→quarter→year client-side; `cardinality` is **not** additive, so don't sum monthly distinct-author counts.
+- **Enumerate a GrimoireLab project's repos**: `terms(repo_name, size 500)` filtered by `{"term":{"project":"<slug>"}}` — the authoritative membership list (the CHAOSS API's `project-repos` truncates at 150). Docs carry the applied `projects.json` tag.
+- **Exclude forks from a project series**: `bool.must_not: {"terms":{"repo_name":[…fork urls + ".git"]}}` with the fork set built from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf` (see those skills).
+- **Affiliation fields are often empty** (`author_org_name` = Unknown/-- UNDEFINED --) — check before promising CHAOSS Organizational Diversity; say "not computable" when it is.
 
 ## Conventions
 

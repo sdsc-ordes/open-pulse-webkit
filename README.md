@@ -25,9 +25,9 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 
 | | What it is | Where |
 |---|---|---|
-| 🧠 **Agent skills** | 9 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🧠 **Agent skills** | 11 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
-| 🎨 **Design system** | A dark-mode SDSC visual identity the `frontend-dev` skill enforces, so generated UI looks on-brand | `frontend-dev` skill |
+| 🎨 **Design system** | Swappable design skills + a fixed token contract, so generated UI looks on-brand and re-branding is a drop-in — see [Styling & the design system](#styling--the-design-system) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` skills |
 | 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
 | 🧪 **Playwright MCP** | Browser verification for agents — host (`npx`) or devcontainer (sidecar on `:8931`) | `.mcp.host.json` / `.mcp.docker.json` → `.mcp.json` |
 | 🔑 **Env template** | Documents the Open Pulse endpoints and credentials your skills need | `.env.example` |
@@ -56,7 +56,7 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 3. Open the repo in your agent and ask it to build something, e.g.
    > *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
 
-   The agent will use the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
+   The agent will use the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill plus the active design skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
 4. Run the app locally (once it's scaffolded — see status below):
    ```bash
    cd src/your-web
@@ -83,6 +83,31 @@ On first create, `post-create` copies `.mcp.docker.json` → `.mcp.json` so agen
 npx playwright install chromium
 bash tools/image/docker/setup-mcp.sh host   # only if .mcp.json was switched by a prior devcontainer session
 ```
+
+---
+
+## Styling & the design system
+
+A brand is delivered to the agent **as a skill** (`.claude/skills/<name>/`), so re-branding means dropping in a new design skill and updating one line in `CLAUDE.md` — not rewriting app code. The app only ever references a fixed set of `--op-*` **token names** (the contract, defined in the `frontend-dev` skill); the active design skill supplies the values. The kit ships:
+
+| Skill | Role | What it is |
+|---|---|---|
+| **`frontend-dev`** | Engineering (brand-agnostic) | The token contract, font-loading mechanics, canvas/D3 rules, required shared components, Playwright verification. No design values — it never changes when the brand does |
+| **`openpulse-dark-theme`** *(active design skill)* | Theme | The permanent-dark Open Pulse dashboard look: `--op-*` token values on a near-black canvas, graph-explorer canvas rules, the "How is this computed?" provenance disclosure, and a named list of deliberate deviations from its base brand |
+| **`sdsc-ui-kit`** | Base brand | The general SDSC brand system from [datascience.ch](https://datascience.ch) — ground truth for brand colours, typography, buttons, form inputs, layout patterns |
+
+All three are **framework-agnostic** — the spec is CSS custom properties plus plain HTML/CSS patterns, so it maps onto any stack (vanilla CSS, Tailwind, React, Svelte, Vue, web components, …).
+
+Rules the agent holds to **under any design skill**:
+
+- **All colours come from the `--op-*` contract tokens.** Never hardcode hex in markup — canvas/SVG drawing code is the only exception.
+- **Fonts are tokens too** (`--op-font-heading/body/mono`), loaded from the npm packages the design skill names — no CDN fonts, so the static build stays self-contained.
+- **Attribution bar** (required): every page tops out with `Built using openpulse.science at <build timestamp>`, the timestamp injected at build time.
+- **Provenance disclosure** (required): every data card carries the same compact "How is this computed?" component (source / method / refresh / caveats).
+
+What the shipped SDSC theme adds on top: Space Grotesk headings, Switzer UI text, JetBrains Mono for code/IDs; sharp corners with only buttons and badges at a subtle 4 px radius; two brand blues as the only interactive chrome colour, status colours confined to badges and toasts, and the data-viz palette confined to chart and graph canvases.
+
+**Bring your own brand:** package your design system as a skill (`SKILL.md` + an `assets/tokens.css` implementing the token contract), point your app's `:root` at your token file, and flip the *Active design skill* line in `CLAUDE.md` — the agent and app adapt automatically. The step-by-step recipe is `.claude/SKILLS.md` §11.
 
 ---
 
@@ -119,7 +144,7 @@ open-pulse-webkit/
 │   ├── PROJECT.md      #   mission, URLs, data sources + CHAOSS dashboard
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
-│   └── skills/         #   the 9 skills
+│   └── skills/         #   the 11 skills (incl. the design-skill system — see Styling)
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── CLAUDE.md           # repo conventions (canonical)
 ├── AGENTS.md           # generated mirror of CLAUDE.md

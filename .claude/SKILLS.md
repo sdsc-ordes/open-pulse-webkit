@@ -38,8 +38,8 @@ myFeature: {
 ## 2. Add a new page
 
 1. Create the route in `src/your-web/` using your framework's routing convention.
-2. Wrap it in the shared app shell: the **required attribution bar** (§7.11, `Built using openpulse.science at <build timestamp>`) at the very top, then the header (§7.1) and footer (§7.2) from the `frontend-dev` skill; list/detail pages use the content+sidebar layout (§7.8).
-3. Use the design system: `〇 LABEL` section blocks (§5), cards/tables/badges (§6), `--op-*` tokens only.
+2. Wrap it in the shared app shell: the **required attribution bar** (§7.4, `Built using openpulse.science at <build timestamp>`) at the very top, then the header (§7.1) and footer (§7.2) from the active design skill (`openpulse-dark-theme`); list/detail pages use the content+sidebar layout (`sdsc-ui-kit` layouts, dark mapping in `openpulse-dark-theme` §7.3).
+3. Use the active design skill: `〇 LABEL` section blocks (§5), cards/tables/badges (§6), `--op-*` contract tokens only.
 4. Add a nav entry to the header, following the existing active-link highlight pattern.
 5. Wire up data using the pattern in §1 if the page needs it.
 
@@ -66,7 +66,7 @@ Rules:
 - `id` must be unique across all queries
 - `label` must be one of: `'Repository' | 'Person' | 'Commit' | 'Organisation' | 'PullRequest'`
 - Edges without a `timestamp` are always visible; edges with one appear when `currentDate ≥ timestamp`
-- Node colors are determined by `label` — see the `frontend-dev` skill §2.6 node-color table (kept in a single `NODE_COLORS` map)
+- Node colors are determined by `label` — see the active design skill's data-viz palette (`openpulse-dark-theme` §2.6), kept in a single `NODE_COLORS` map
 
 ---
 
@@ -74,31 +74,32 @@ Rules:
 
 When the design requires a colour or value that isn't in the token set:
 
-1. **Global stylesheet `:root`** — add the CSS custom property:
+1. **The active design skill first** — add the token (with its value and role) to the design skill's §2 tables and `assets/tokens.css`. If it's a brand value it must come from the base brand's scales.
+2. **Global stylesheet `:root`** — add the CSS custom property:
    ```css
    --op-<name>: <hex>;
    ```
-2. **Utility framework theme config** (only if you use one, e.g. Tailwind v4 `@theme`) — mirror it so utilities like `bg-op-<name>` generate:
+3. **Utility framework theme config** (only if you use one, e.g. Tailwind v4 `@theme`) — mirror it so utilities like `bg-op-<name>` generate:
    ```css
    --color-op-<name>: <hex>;
    ```
-3. **`frontend-dev` skill §2** — add a row to the token reference table.
+4. If the token is something **every** design skill must now supply, also add its name to the token contract in `frontend-dev` §2.
 
-Keep the two definitions (if you have both) in sync.
+Keep the `:root` and theme-config definitions in sync (they are the only two places values may appear).
 
 ---
 
 ## 5. Write a card / table / badge
 
-Always copy the exact markup from the `frontend-dev` skill §6 component patterns rather than inventing new markup. Adapt the HTML to your framework's component syntax, but keep classes, tokens, and structure. Key patterns:
+Component **anatomy** (padding, borders, states, transitions) lives in `sdsc-ui-kit` `references/components.md`; the dashboard's **dark values and deviations** live in the active design skill (`openpulse-dark-theme` §5–§6). Copy from there rather than inventing new markup — adapt the HTML to your framework's component syntax, but keep classes, tokens, and structure. Key patterns:
 
 **Card:** `bg-op-surface border border-op-border rounded-none p-8`
 
-**Status badge (succeeded):** `color:var(--op-success); background:rgba(74,222,128,0.12)`, `rounded-none`, uppercase, `tracking-wide`
+**Status badge (succeeded):** `color:var(--op-success); background:rgba(52,211,153,0.12)`, `rounded` (4px), uppercase, `tracking-wide`
 
 **Section label (`〇 LABEL`):** `var(--op-text-muted)`, 14px Switzer Medium, uppercase, `tracking-wide`
 
-See §6.1–§6.7 and §5 of the skill for the full markup.
+See `openpulse-dark-theme` §5–§6 for the full dark markup.
 
 ---
 
@@ -119,7 +120,7 @@ This is framework-neutral D3 guidance for the graph view:
 - Node entry animation: new nodes get a random radial offset and animate to their simulated position via a spring (`alpha` decay).
 - If nodes spawn at (0, 0) — the simulation hasn't warmed up yet; ensure the graph is built inside a `requestAnimationFrame`.
 - A `currentDate` value controls visibility; do the timestamp filtering **before** passing data to the graph component, not inside it.
-- D3 color constants must match the `NODE_COLORS` map (single source — `frontend-dev` skill §2.6). Canvas/D3 can't read CSS variables, so these are hex literals there.
+- D3 color constants must match the `NODE_COLORS` map (single source — values from the active design skill, `openpulse-dark-theme` §2.6). Canvas/D3 can't read CSS variables, so these are hex literals there (`frontend-dev` §5).
 
 ---
 
@@ -128,3 +129,46 @@ This is framework-neutral D3 guidance for the graph view:
 Run whatever type-check / lint / build your chosen stack provides, from `src/your-web/`, before pushing — CI runs the same and will fail the build on errors. A passing build is a correctness gate, not a feature-correctness gate: still verify UI in the browser via Playwright MCP (see `CLAUDE.md`).
 
 Separately, the agent-config sync is its own gate: after editing anything in `.claude/`, run `node tools/sync-agents.mjs` so `.agents/` + `AGENTS.md` stay in sync (CI `agents-sync` job enforces it).
+
+---
+
+## 9. Build a scoped dashboard (landing + themes + coverage)
+
+Applies to any **scope** — a school, an institute, a lab cluster, a topic/discipline, a funding programme, or a single organisation. When asked for "a dashboard", default to the shape in `CLAUDE.md` → *Reference outcome*: a landing page ("at a glance" — required), a handful of question-anchored drill-down themes adapted to the scope (see the example structures there), and a coverage panel. Rules that generalise across scopes:
+
+- **One provenance component, everywhere.** Every data card gets the same compact `<details>` disclosure with four fixed fields — *source* (Neo4j / GraphDB / GrimoireLab / GitHub API), *method* (crawler / LLM extractor / classifier / CHAOSS API), *refresh cadence*, *caveats*. Never write bespoke per-section explanations. Visual spec: `openpulse-dark-theme` §7.5.
+- **Exclude vendored forks from health metrics.** A fork of `assimp` or `imgui` carries the whole upstream commit history and can inflate a scope's commit counts several-fold. Build the fork set from Neo4j `FORK_OF` ∪ SPARQL `op:isForkOf`, exclude it from activity/community series, keep forks in the catalogue but badge them.
+- **Title ecosystem growth and per-repo growth apart.** "More repos over time" and "one project's contributor/commit trajectory" are different data cuts — readers conflate them unless the widget titles say which one they are.
+- **Say "not computable" instead of rendering an empty chart.** E.g. CHAOSS Organizational Diversity needs affiliations the GrimoireLab identities may not have — show a short honest note and link to where the question *is* answerable.
+- **Sparse impact data is a story, not a bug.** Output links (software→publications, software→datasets, …) are thin until identifier coverage (ORCID, CITATION.cff, DOIs) grows; render the chain as a funnel (repos → with metadata → contributors → identifier-linked → outputs linked) and pair it with the coverage panel's to-do lists.
+- **Flag framing calls, don't decide them silently** (e.g. whether to lead with `repositoryType = Software` only, or whether to count student repos): show all by default, add the filter, and put a visible "open decision" banner on the section.
+
+## 10. Bake data snapshots at build time
+
+The static-first data path (`CLAUDE.md` → *Preferred approach*): a `scripts/fetch-data.mjs` in your app queries the stores directly (reusing the `.env` conventions and HTTP transports from the `query-*` skill scripts) and writes typed JSON snapshots into `src/data/`, which pages import at build time. The browser never touches the stores.
+
+- **Define the scope first, as data.** A scope resolves to one of: a set of GitHub organisations (Neo4j `OWNS`), a GrimoireLab project tag, a SPARQL facet (`op:discipline`, `op:ownedBy`, `org:unitOf`), or an explicit repo list. To enumerate a GrimoireLab project's repos, use an OpenSearch `terms` agg on `repo_name` filtered by `project` — the CHAOSS API's `project-repos` endpoint truncates at 150 and ignores paging params.
+- **Typical outputs**: `summary.json` (headline numbers), `repos.json` (catalogue rows), `graph.json` (trimmed nodes/edges for the collaboration graph), `health.json` (monthly series + per-repo table), `impact.json` (funnel + linked articles), `coverage.json` (gap lists per org).
+- **Resolve discipline labels.** `op:discipline` values are Wikidata QIDs — resolve to English labels at fetch time via `wbgetentities` (batch ≤ 45 ids), falling back to the QID.
+- **Trim the graph for readability** in the script, not the component: keep all orgs, repos with ≥ 1 contributor, people connected to ≥ 2 repos plus the top individual contributors; record what was dropped in a `stats` block so the UI can say so.
+- **Stamp every snapshot** with `fetchedAt` + scope metadata, and print row counts as the script runs — silent truncation reads as full coverage.
+
+## 11. Integrate your own design system (as a skill)
+
+A brand is delivered to agents as a skill directory, not as app code — swapping brands means swapping the skill and updating one line in `CLAUDE.md`. The app auto-adapts because it references only the **`--op-*` token contract** (the fixed name set in `frontend-dev` §2); a design skill supplies the values. `sdsc-ui-kit` is the reference layout for a full brand; `openpulse-dark-theme` shows the minimal delta-theme form (`SKILL.md` + `assets/tokens.css`):
+
+```
+.claude/skills/<your-brand>/
+├── SKILL.md                      # entry point: when-to-use frontmatter + the design language
+├── assets/tokens.css             # values for the --op-* token contract, copy-pasteable into an app
+└── references/                   # (full brands) split out the detail:
+    ├── design-tokens.md          #   every token with value + role
+    ├── components.md             #   canonical markup/CSS per component
+    └── layouts.md                #   page-level archetypes
+```
+
+1. **Implement the token contract.** `assets/tokens.css` must define every `--op-*` name listed in `frontend-dev` §2 (fonts, surfaces, accents, text, status, footer) — keep the names, change the values; aliasing is fine. It must be usable verbatim as an app's `:root` block. No framework assumptions — utility-class names are hints, not requirements.
+2. **Write the `SKILL.md` frontmatter as a trigger**, not a summary: say *when* an agent should reach for the skill ("when building UI for X…") and when not to.
+3. **State the ground truth.** Name the authoritative source (a Figma file, a brand PDF, a production site) and its date, so future edits know what wins a dispute. A delta theme instead names its base skill and lists its deliberate deviations (see `openpulse-dark-theme` §1.2).
+4. **Point the app at it**: replace the token values in your global stylesheet's `:root` (and your utility framework's theme config, if any) with the new skill's `assets/tokens.css`. Because the app only uses contract names, this is a one-file change — never rename tokens per-brand in app code.
+5. **Activate it**: update the *Active design skill* line in `CLAUDE.md` → *Design system*, and run `node tools/sync-agents.mjs`.

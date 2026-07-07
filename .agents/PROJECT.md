@@ -15,7 +15,7 @@ Two audiences read this codebase:
 
 When deciding between "this is a one-off feature" vs. "this is a pattern others will follow", err toward the second. Naming, file layout, abstractions, and design tokens should generalise.
 
-**Framework-neutral by design.** The template deliberately does not commit to a UI framework. The web app lives in `src/your-web/` and the downstream user picks their own stack. What the template *does* provide and standardise is framework-independent: the **Open Pulse query skills** and the **SDSC design system** (the `frontend-dev` skill). Keep those stable; treat the app shell as replaceable.
+**Framework-neutral by design.** The template deliberately does not commit to a UI framework. The web app lives in `src/your-web/` and the downstream user picks their own stack. What the template *does* provide and standardise is framework-independent: the **Open Pulse query skills** and the **design-skill system** (the `frontend-dev` token contract + a swappable design skill; default `openpulse-dark-theme` over the `sdsc-ui-kit` brand). Keep those stable; treat the app shell as replaceable.
 
 ---
 
@@ -127,7 +127,7 @@ These views are intended both as working tools and as **pattern examples**. They
 | **List / detail** (e.g. pipeline runs) | List + detail; status badges; tables; shared shell |
 | **Card grid** (e.g. service health) | Card grid; mixed-status surfaces (containers, endpoints, smoke tests) |
 
-Together they cover the three layout archetypes a downstream user is most likely to need (full-page canvas, list/detail, card grid). Their visual specs live in the `frontend-dev` skill (§7–§8).
+Together they cover the three layout archetypes a downstream user is most likely to need (full-page canvas, list/detail, card grid). Their anatomy lives in the `sdsc-ui-kit` skill (`references/layouts.md`); the dark dashboard mappings live in the `openpulse-dark-theme` skill (§7–§8).
 
 ---
 
@@ -135,7 +135,7 @@ Together they cover the three layout archetypes a downstream user is most likely
 
 When suggesting changes, keep these likely user journeys in mind:
 
-1. **Scaffold the app** — choose a framework and scaffold it in `src/your-web/`, then apply the design system (`frontend-dev` skill §10 checklist).
+1. **Scaffold the app** — choose a framework and scaffold it in `src/your-web/`, then apply the design system (`frontend-dev` skill §8 checklist + the active design skill).
 2. **Wire to real data** — add a **server-side** layer (serverless function, small API, or framework server route) that holds Open Pulse credentials and proxies queries, so secrets never reach the browser. Point the client at that endpoint.
 3. **Add a new domain-specific view** — follow `.agents/SKILLS.md §2` (Add a new page) and the API/data patterns in §1.
 4. **Re-skin the design** — edit the `--op-*` CSS custom properties. The token convention exists so the rename to their own brand is a one-file change.
@@ -158,7 +158,7 @@ If a change makes one of these journeys harder (e.g. couples the design system t
 
 - **Conventions, stack-neutral dev workflow, what-not-to-do:** `AGENTS.md` (repo root)
 - **Concrete how-tos** (add page, add endpoint, add token): `.agents/SKILLS.md`
-- **Visual rules**: the `frontend-dev` skill (`.agents/skills/frontend-dev/SKILL.md`)
+- **Visual rules**: the active design skill (`openpulse-dark-theme`, over the `sdsc-ui-kit` brand ground truth); engineering mechanics in `frontend-dev`
 - **Backend endpoints & credentials**: `.env.example`
 - **Data store query skills**: `.agents/skills/query-{neo4j,sparql,opensearch}/SKILL.md`
 - **CHAOSS health metrics**: `.agents/skills/query-chaoss/SKILL.md` (featured dashboard slugs above)
