@@ -2,7 +2,7 @@
 // Run a Cypher query against the Open Pulse Neo4j HTTP transactional API.
 //
 // Reads NEO4J_HTTP_ENDPOINT and NEO4J_AUTH (format: user/password) from
-// the nearest .env walking up from this file, or from process.env.
+// the nearest .env walking up from the CWD (then from this file), or from process.env.
 // Prints the rows as JSON to stdout.
 //
 // Usage:
@@ -15,25 +15,26 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 async function loadDotenv() {
-	let dir = dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 10; i++) {
-		const envPath = join(dir, '.env');
-		try {
-			await stat(envPath);
-			const text = await readFile(envPath, 'utf8');
-			for (const line of text.split('\n')) {
-				const trimmed = line.trim();
-				if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-				const idx = trimmed.indexOf('=');
-				const key = trimmed.slice(0, idx).trim();
-				const value = trimmed.slice(idx + 1).trim();
-				if (process.env[key] === undefined) process.env[key] = value;
+	for (let dir of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+		for (let i = 0; i < 10; i++) {
+			const envPath = join(dir, '.env');
+			try {
+				await stat(envPath);
+				const text = await readFile(envPath, 'utf8');
+				for (const line of text.split('\n')) {
+					const trimmed = line.trim();
+					if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+					const idx = trimmed.indexOf('=');
+					const key = trimmed.slice(0, idx).trim();
+					const value = trimmed.slice(idx + 1).trim();
+					if (process.env[key] === undefined) process.env[key] = value;
+				}
+				return;
+			} catch {
+				const parent = dirname(dir);
+				if (parent === dir) break;
+				dir = parent;
 			}
-			return;
-		} catch {
-			const parent = dirname(dir);
-			if (parent === dir) return;
-			dir = parent;
 		}
 	}
 }

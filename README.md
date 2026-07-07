@@ -25,7 +25,8 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 
 | | What it is | Where |
 |---|---|---|
-| 🧠 **Agent skills** | 11 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🧠 **Agent skills** | 12 ready-to-use skills: a guided **`new-dashboard` wizard** that interviews you and scaffolds your dashboard, 8 query skills for Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections), and the frontend/design skills | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🔌 **Claude Code plugin** | The same skills packaged as an installable plugin (`open-pulse`) — usable from *any* project without forking this repo | `.claude-plugin/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
 | 🎨 **Design system** | Swappable design skills + a fixed token contract, so generated UI looks on-brand and re-branding is a drop-in — see [Styling & the design system](#styling--the-design-system) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` skills |
 | 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
@@ -43,6 +44,25 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 - **[Pi coding agent](https://pi.dev)** — reads `AGENTS.md` and auto-discovers skills from `.agents/skills/`
 
 > The two copies are kept in sync automatically. **Only edit `.claude/`**, then run `node tools/sync-agents.mjs`. CI fails if they drift.
+
+---
+
+## Two ways to get the toolkit
+
+**A. Fork/clone this template (zero install).** Claude Code auto-discovers `CLAUDE.md` and `.claude/skills/` when you open the repo — accept the one-time workspace-trust prompt and everything is loaded. Other runtimes pick up `AGENTS.md` / `.agents/skills/` the same way.
+
+**B. Install the plugin in any project (Claude Code only).** No fork needed — the repo doubles as a plugin marketplace:
+
+```
+/plugin marketplace add sdsc-ordes/open-pulse-webkit
+/plugin install open-pulse@open-pulse
+```
+
+The skills then work in every project you open, namespaced as `/open-pulse:new-dashboard`, `/open-pulse:query-neo4j`, …. Put a `.env` with your Open Pulse credentials at the root of whichever project you're working in (same keys as [`.env.example`](.env.example)) — the skill scripts look there first.
+
+> Don't combine A and B in the same project: a clone already loads the project skills, so the plugin would load everything twice.
+
+Start the guided experience with **`/new-dashboard`** (clone) or **`/open-pulse:new-dashboard`** (plugin): it asks what slice of the data you care about, whether you have a design in mind, proposes drill-down themes, checks the stores actually cover your scope, then scaffolds and verifies the app.
 
 ---
 

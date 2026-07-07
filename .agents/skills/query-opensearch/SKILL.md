@@ -25,6 +25,8 @@ Unset / `false` keeps the historical direct transport — useful once `:9200` is
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.agents/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.agents/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # Cluster sanity
 python .agents/skills/query-opensearch/query.py health

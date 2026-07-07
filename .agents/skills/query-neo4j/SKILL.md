@@ -15,6 +15,8 @@ This skill ships two equivalent scripts that talk to the Neo4j HTTP transactiona
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.agents/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.agents/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # Inline Cypher
 python .agents/skills/query-neo4j/query.py 'MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n ORDER BY n DESC'

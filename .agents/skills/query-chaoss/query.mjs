@@ -32,25 +32,26 @@ import { fileURLToPath } from 'node:url';
 const CHAOSS_PATH = '/api/v1/metrics/chaoss';
 
 async function loadDotenv() {
-	let dir = dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 10; i++) {
-		const envPath = join(dir, '.env');
-		try {
-			await stat(envPath);
-			const text = await readFile(envPath, 'utf8');
-			for (const line of text.split('\n')) {
-				const trimmed = line.trim();
-				if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-				const idx = trimmed.indexOf('=');
-				const key = trimmed.slice(0, idx).trim();
-				const value = trimmed.slice(idx + 1).trim();
-				if (process.env[key] === undefined) process.env[key] = value;
+	for (let dir of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+		for (let i = 0; i < 10; i++) {
+			const envPath = join(dir, '.env');
+			try {
+				await stat(envPath);
+				const text = await readFile(envPath, 'utf8');
+				for (const line of text.split('\n')) {
+					const trimmed = line.trim();
+					if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
+					const idx = trimmed.indexOf('=');
+					const key = trimmed.slice(0, idx).trim();
+					const value = trimmed.slice(idx + 1).trim();
+					if (process.env[key] === undefined) process.env[key] = value;
+				}
+				return;
+			} catch {
+				const parent = dirname(dir);
+				if (parent === dir) break;
+				dir = parent;
 			}
-			return;
-		} catch {
-			const parent = dirname(dir);
-			if (parent === dir) return;
-			dir = parent;
 		}
 	}
 }

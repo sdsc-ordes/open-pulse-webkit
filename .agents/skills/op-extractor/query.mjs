@@ -22,24 +22,25 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 async function loadDotenv() {
-	let dir = dirname(fileURLToPath(import.meta.url));
-	for (let i = 0; i < 10; i++) {
-		const envPath = join(dir, '.env');
-		try {
-			await stat(envPath);
-			const text = await readFile(envPath, 'utf8');
-			for (const line of text.split('\n')) {
-				const t = line.trim();
-				if (!t || t.startsWith('#') || !t.includes('=')) continue;
-				const i = t.indexOf('=');
-				const k = t.slice(0, i).trim();
-				if (process.env[k] === undefined) process.env[k] = t.slice(i + 1).trim();
+	for (let dir of [process.cwd(), dirname(fileURLToPath(import.meta.url))]) {
+		for (let i = 0; i < 10; i++) {
+			const envPath = join(dir, '.env');
+			try {
+				await stat(envPath);
+				const text = await readFile(envPath, 'utf8');
+				for (const line of text.split('\n')) {
+					const t = line.trim();
+					if (!t || t.startsWith('#') || !t.includes('=')) continue;
+					const j = t.indexOf('=');
+					const k = t.slice(0, j).trim();
+					if (process.env[k] === undefined) process.env[k] = t.slice(j + 1).trim();
+				}
+				return;
+			} catch {
+				const parent = dirname(dir);
+				if (parent === dir) break;
+				dir = parent;
 			}
-			return;
-		} catch {
-			const parent = dirname(dir);
-			if (parent === dir) return;
-			dir = parent;
 		}
 	}
 }

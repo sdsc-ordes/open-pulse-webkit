@@ -19,6 +19,8 @@ Auth is **HTTP Basic, password-only** — the username is ignored, only the pass
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.agents/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.agents/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # Catalogue (static specs) — all 35, the 3 topic buckets, or one spec
 python .agents/skills/query-chaoss/query.py catalogue
