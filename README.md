@@ -96,13 +96,16 @@ A brand is delivered to the agent **as a skill** (`.claude/skills/<name>/`), so 
 | **`openpulse-dark-theme`** *(active design skill)* | Theme | The permanent-dark Open Pulse dashboard look: `--op-*` token values on a near-black canvas, graph-explorer canvas rules, the "How is this computed?" provenance disclosure, and a named list of deliberate deviations from its base brand |
 | **`sdsc-ui-kit`** | Base brand | The general SDSC brand system from [datascience.ch](https://datascience.ch) — ground truth for brand colours, typography, buttons, form inputs, layout patterns |
 
-Both are **framework-agnostic** — the spec is CSS custom properties plus plain HTML/CSS patterns, so it maps onto any stack (vanilla CSS, Tailwind, React, Svelte, Vue, web components, …). The rules the agent is instructed to hold to, wherever the UI comes from:
+All three are **framework-agnostic** — the spec is CSS custom properties plus plain HTML/CSS patterns, so it maps onto any stack (vanilla CSS, Tailwind, React, Svelte, Vue, web components, …).
 
-- **All colours come from tokens** (CSS custom properties; `--op-*` in the dark kit). Never hardcode hex in markup — canvas/SVG drawing code is the only exception.
-- **Fonts:** Space Grotesk for headings, Switzer for all UI text, JetBrains Mono for code/IDs — all loaded from npm packages, no CDN fonts.
-- **Sharp corners** everywhere; only buttons and badges carry a subtle 4 px radius.
-- **Two brand blues are the only interactive chrome colour.** Status colours (success/warning/error) appear only on badges and toasts; the data-viz palette stays inside chart and graph canvases.
+Rules the agent holds to **under any design skill**:
+
+- **All colours come from the `--op-*` contract tokens.** Never hardcode hex in markup — canvas/SVG drawing code is the only exception.
+- **Fonts are tokens too** (`--op-font-heading/body/mono`), loaded from the npm packages the design skill names — no CDN fonts, so the static build stays self-contained.
 - **Attribution bar** (required): every page tops out with `Built using openpulse.science at <build timestamp>`, the timestamp injected at build time.
+- **Provenance disclosure** (required): every data card carries the same compact "How is this computed?" component (source / method / refresh / caveats).
+
+What the shipped SDSC theme adds on top: Space Grotesk headings, Switzer UI text, JetBrains Mono for code/IDs; sharp corners with only buttons and badges at a subtle 4 px radius; two brand blues as the only interactive chrome colour, status colours confined to badges and toasts, and the data-viz palette confined to chart and graph canvases.
 
 **Bring your own brand:** package your design system as a skill (`SKILL.md` + an `assets/tokens.css` implementing the token contract), point your app's `:root` at your token file, and flip the *Active design skill* line in `CLAUDE.md` — the agent and app adapt automatically. The step-by-step recipe is `.claude/SKILLS.md` §11.
 
