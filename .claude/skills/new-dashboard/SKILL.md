@@ -19,13 +19,17 @@ Walk the user from "I want a dashboard" to a running, verified scaffold — one 
 
 Look at `src/your-web/`. If an app already exists there, ask whether to **extend it** or **start fresh** before anything else. If `.env` is missing at the project root, tell the user to copy `.env.example` → `.env` and fill in credentials now — Stage 3 needs live store access.
 
-## Stage 1 — Scope & story
+## Stage 1 — Scope, audience & story
 
-One AskUserQuestion call, two questions:
+One AskUserQuestion call, four questions:
 
 1. **"What slice of the Open Pulse data should this dashboard tell the story of?"**
    Options: a school/institute/lab cluster · a single organisation or product · a topic or discipline · the whole platform. (These map to the theme structures in `CLAUDE.md` §*Reference outcome*.)
-2. **"Do you have a specific design in mind?"**
+2. **"Who is the primary viewer?"**
+   Options: research leadership & funders · the researchers/developers whose work it shows · the broader public & community · a mixed audience. This drives vocabulary and metric choice: leadership/funders care about impact, outcomes, and coverage; developers care about health, activity, and dependencies; a public audience needs plain language and zero unexplained jargon.
+3. **"Should it lean storytelling or stats?"**
+   Options: "Hybrid — a narrative landing, dense drill-downs (Recommended)" · "Storytelling — a guided narrative with annotated highlights" · "Stats reference — dense numbers, tables, filters". Consequences: *storytelling* means fewer, larger numbers, one signature visual per theme, written takeaways next to every chart, and a deliberate reading order; *stats reference* means tile grids, filterable tables, exact values, and no prose padding; *hybrid* puts the story on the landing page and the density one click down.
+4. **"Do you have a specific design in mind?"**
    Options: "Yes — I'll describe it (or paste a link/screenshot)" · "Show me the reference archetypes first" · "No — follow the SDSC design system and propose something".
 
 If they picked "describe it", collect the description now and treat it as the design brief. If they picked "show me", present the three layout archetypes (full-page graph canvas · list/detail · card grid) as options with short ASCII `preview` mockups so they can compare side by side.
@@ -34,7 +38,7 @@ Then get the concrete scope: ask for the GitHub org(s)/repos, ROR institution, o
 
 ## Stage 2 — Themes
 
-Propose 3–5 drill-down themes matched to their scope type, phrased as reader questions (e.g. *what exists? · who's behind it? · how healthy is it? · what does it produce?* for a research scope — see `CLAUDE.md` §*Reference outcome* for the per-scope structures). One AskUserQuestion call, `multiSelect: true`: which themes go in v1? Always include the two fixed elements in your plan regardless of the answer: the **at-a-glance landing page** and the **"What's missing?" coverage panel**.
+Propose 3–5 drill-down themes matched to their scope type, phrased as questions **the Stage 1 viewer would actually ask** (e.g. *what exists? · who's behind it? · how healthy is it? · what does it produce?* for a research scope — see `CLAUDE.md` §*Reference outcome* for the per-scope structures). Let the story/stats answer shape the framing: for storytelling, order the themes as chapters with a one-line takeaway each; for stats, present them as metric groups. One AskUserQuestion call, `multiSelect: true`: which themes go in v1? Always include the two fixed elements in your plan regardless of the answer: the **at-a-glance landing page** and the **"What's missing?" coverage panel**.
 
 ## Stage 3 — Data reconnaissance (do the work, then report)
 
@@ -58,7 +62,7 @@ One AskUserQuestion call:
 
 Now build, without further questions unless something contradicts an earlier answer:
 
-1. Scaffold the chosen framework in `src/your-web/` with the attribution bar (build-time ISO-8601 UTC timestamp), design tokens, and the landing page fed by **real snapshot data from Stage 3** — no lorem-ipsum numbers.
+1. Scaffold the chosen framework in `src/your-web/` with the attribution bar (build-time ISO-8601 UTC timestamp), design tokens, and the landing page fed by **real snapshot data from Stage 3** — no lorem-ipsum numbers. Shape the landing to the Stage 1 posture: a narrative lede with annotated highlights (storytelling/hybrid) or a headline stat-tile row (stats reference), written in the primary viewer's vocabulary.
 2. Stub each chosen theme page with its headline metric wired to real data and a clearly-marked TODO body.
 3. Verify in the browser (Playwright MCP when available — navigate, screenshot, check the console). A passing build is not verification.
 4. Close by reporting what was built, what data feeds it, and the 2–3 highest-leverage next steps (usually: flesh out theme #1, add the coverage panel, set up the Pages deploy workflow).
