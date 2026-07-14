@@ -62,7 +62,20 @@ The skills then work in every project you open, namespaced as `/open-pulse:new-d
 
 > Don't combine A and B in the same project: a clone already loads the project skills, so the plugin would load everything twice.
 
-Start the guided experience with **`/new-dashboard`** (clone) or **`/open-pulse:new-dashboard`** (plugin): it asks what slice of the data you care about, whether you have a design in mind, proposes drill-down themes, checks the stores actually cover your scope, then scaffolds and verifies the app.
+---
+
+## The `/new-dashboard` setup wizard
+
+The fastest way to start. Run **`/new-dashboard`** (clone) or **`/open-pulse:new-dashboard`** (plugin) and it walks you from "I want a dashboard" to a running, verified app — one decision at a time:
+
+1. **Checks your setup** — confirms `.env` exists *and* that each store actually responds, so a section is never promised on a store that's down or unconfigured.
+2. **Interviews you** — what slice of the data to tell the story of, who the primary viewer is, a storytelling-vs-stats posture, and whether you have a design in mind.
+3. **Custom design (optional)** — if you don't want the SDSC look, it turns a short design Q&A into a reusable design skill implementing the `--op-*` token contract, and builds against it.
+4. **Proposes themes** — a proven landing-page-plus-four-themes skeleton you can take, adapt, or replace.
+5. **Checks coverage** — runs live queries against your scope so themes are only promised where the data exists.
+6. **Plans, then builds** — writes a one-page `DASHBOARD.md` spec for you to approve, then scaffolds `src/your-web/` with real snapshot data and verifies every page in the browser.
+
+Nothing is scaffolded until you've signed off on the plan.
 
 ---
 
