@@ -19,7 +19,12 @@ Walk the user from "I want a dashboard" to a running, verified scaffold — one 
 
 Look at `src/your-web/`. If an app already exists there, ask whether to **extend it** or **start fresh** before anything else. If `.env` is missing at the project root, tell the user to copy `.env.example` → `.env` and fill in credentials now — the rest of the wizard needs live store access.
 
-Then **verify the stores actually respond** — don't wait until Stage 3 to discover a store is down. If the repo has a connectivity script (`npm run check-connectivity`), run it; otherwise fire one cheap probe per store with the query skills (a `query-neo4j` `MATCH (n) RETURN count(n)`, a `query-sparql` `ASK { ?s ?p ?o }`, an `query-opensearch` root ping, one `query-chaoss` metric, one `op-collections` `/api/stats/`). Report a ✔/✖ per store in one line and, crucially, distinguish the two failure modes: **not configured** (the key is still an `.env.example` placeholder) versus **configured but unreachable** (wrong credential, or the store is down). A store that can't answer now cannot back a theme later — carry that fact into Stages 2–3 rather than promising a section it can't fill.
+Then **verify the stores actually respond** — don't wait until Stage 3 to discover a store is down.
+
+- **Clone / template checkout (preferred):** run `npm run check-connectivity` (`node tools/check-connectivity.mjs`). It live-checks all five stores against the repo-root `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints one line each: **✔** reachable (with a node count / version), **✖** configured but unreachable (wrong credential, or the store is down), and **• skipped** — the key is still an `.env.example` placeholder, i.e. *not configured*. If it reports no `.env`, send the user to copy `.env.example` → `.env` first.
+- **Plugin mode, or if the script isn't there:** the script reads the *webkit* repo-root `.env`, not the host project's, so it can't help a plugin-in-a-foreign-project. Fall back to one cheap probe per store with the query skills you already have — `query-neo4j` `MATCH (n) RETURN count(n)`, `query-sparql` `ASK { ?s ?p ?o }`, `query-opensearch` root ping, one `query-chaoss` metric, one `op-collections` `/api/stats/` — and report the same three states per store.
+
+Either way, distinguish **not configured** (a placeholder key — fixable by filling in `.env`) from **configured but unreachable** (bad credential, or the store is down), and carry the per-store verdict into Stages 2–3: a store that can't answer now cannot back a theme later, so don't promise a section it can't fill.
 
 ## Stage 1 — Scope, audience & story
 
