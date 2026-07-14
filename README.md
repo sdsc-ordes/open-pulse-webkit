@@ -99,6 +99,16 @@ Nothing is scaffolded until you've signed off on the plan.
 
 > **Bring your own framework.** This template doesn't prescribe a UI stack — the app lives in `src/your-web/` and you build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, …). What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
 
+### Connectivity check
+
+Once you've copied `.env.example` → `.env` and filled in your Open Pulse credentials, verify they actually reach the stores before building anything:
+
+```bash
+npm run check-connectivity        # or: node tools/check-connectivity.mjs
+```
+
+It live-checks all five endpoints with the values in `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints a ✔/✖ per store (node counts, versions, reachability), so bad credentials or unreachable stores surface now rather than as empty charts later. It only reads: it never writes `.env` or any app file, and services whose keys are still placeholders are skipped. A ✖ is diagnostic, not fatal — fix the value in `.env` and re-run.
+
 ### Devcontainer & Playwright MCP
 
 Open in VS Code / Codespaces with the **Dev Containers** extension — `.devcontainer/devcontainer.json` points at `tools/image/docker/docker-compose.yml`:
