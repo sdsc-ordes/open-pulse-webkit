@@ -66,22 +66,15 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 
 > **Bring your own framework.** This template doesn't prescribe a UI stack — the app lives in `src/your-web/` and you build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, …). What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
 
-### Setup wizard
+### Connectivity check
 
-Instead of copying `.env` by hand, you can run the interactive configuration wizard from the repo root:
+Once you've copied `.env.example` → `.env` and filled in your Open Pulse credentials, verify they actually reach the stores before building anything:
 
 ```bash
-npm run setup        # or: node tools/setup.mjs
+npm run check-connectivity        # or: node tools/check-connectivity.mjs
 ```
 
-It walks through four steps — each skippable, nothing overwritten silently:
-
-1. **Project identity** — project name, header wordmark, default theme (dark/light).
-2. **Environment** — creates/updates the repo-root `.env` from `.env.example` (credentials stay local; `.env` is git-ignored).
-3. **Connectivity** — live-checks Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API and the Open Pulse hub with the values just entered, so bad credentials surface now rather than as empty charts later.
-4. **Pages** — scaffolds dashboard pages from the layout archetypes (card grid, list/detail, trends, graph explorer): the HTML entry, a typed page module, sample data JSON, plus nav + Vite registration.
-
-On a fresh fork (no app under `src/` yet) the wizard runs the environment and connectivity steps and skips the rest — scaffold your app first, then re-run it. The pages step expects an app exposing the reference shared components (`shell`, `components/ui`, `components/charts`, `components/chart-state`, `components/pulse-graph`, as in the reference dashboards built from this template); the generated pages render working sample data on the design system, ready to swap for a real snapshot. Page templates live in `tools/setup-templates/` — edit those to change what gets scaffolded.
+It live-checks all five endpoints with the values in `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints a ✔/✖ per store (node counts, versions, reachability), so bad credentials or unreachable stores surface now rather than as empty charts later. It only reads: it never writes `.env` or any app file, and services whose keys are still placeholders are skipped. A ✖ is diagnostic, not fatal — fix the value in `.env` and re-run.
 
 ### Devcontainer & Playwright MCP
 

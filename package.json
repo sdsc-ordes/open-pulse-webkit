@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "setup": "node tools/setup.mjs",
+    "check-connectivity": "node tools/check-connectivity.mjs",
     "sync-agents": "node tools/sync-agents.mjs"
   }
 }
