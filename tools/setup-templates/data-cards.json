@@ -1,0 +1,59 @@
+{
+  "generatedAt": "SAMPLE — replace with your fetch-data snapshot",
+  "items": [
+    {
+      "id": "api",
+      "name": "Query API",
+      "status": "success",
+      "statusLabel": "operational",
+      "description": "Server-side proxy that fronts the Open Pulse stores for the browser.",
+      "metricLabel": "Requests today",
+      "metricValue": 12480
+    },
+    {
+      "id": "neo4j",
+      "name": "Neo4j graph",
+      "status": "success",
+      "statusLabel": "operational",
+      "description": "Property graph of repositories, contributors, commits and organisations.",
+      "metricLabel": "Nodes",
+      "metricValue": 1204233
+    },
+    {
+      "id": "sparql",
+      "name": "SPARQL endpoint",
+      "status": "warning",
+      "statusLabel": "degraded",
+      "description": "Oxigraph triplestore behind the Caddy basic-auth proxy.",
+      "metricLabel": "p95 latency (ms)",
+      "metricValue": 1840
+    },
+    {
+      "id": "opensearch",
+      "name": "OpenSearch cluster",
+      "status": "success",
+      "statusLabel": "operational",
+      "description": "GrimoireLab-enriched commit, issue and PR documents.",
+      "metricLabel": "Documents",
+      "metricValue": 486211
+    },
+    {
+      "id": "crawler",
+      "name": "GitHub crawler",
+      "status": "running",
+      "statusLabel": "crawling",
+      "description": "Discovers repositories from the seed organisations.",
+      "metricLabel": "Repos this run",
+      "metricValue": 312
+    },
+    {
+      "id": "extractor",
+      "name": "Metadata extractor",
+      "status": "error",
+      "statusLabel": "failed",
+      "description": "Pulls GitHub / ORCID / DOI metadata into the RDF graph.",
+      "metricLabel": "Failed items",
+      "metricValue": 14
+    }
+  ]
+}

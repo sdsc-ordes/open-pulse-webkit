@@ -66,6 +66,23 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 
 > **Bring your own framework.** This template doesn't prescribe a UI stack — the app lives in `src/your-web/` and you build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, …). What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
 
+### Setup wizard
+
+Instead of copying `.env` by hand, you can run the interactive configuration wizard from the repo root:
+
+```bash
+npm run setup        # or: node tools/setup.mjs
+```
+
+It walks through four steps — each skippable, nothing overwritten silently:
+
+1. **Project identity** — project name, header wordmark, default theme (dark/light).
+2. **Environment** — creates/updates the repo-root `.env` from `.env.example` (credentials stay local; `.env` is git-ignored).
+3. **Connectivity** — live-checks Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API and the Open Pulse hub with the values just entered, so bad credentials surface now rather than as empty charts later.
+4. **Pages** — scaffolds dashboard pages from the layout archetypes (card grid, list/detail, trends, graph explorer): the HTML entry, a typed page module, sample data JSON, plus nav + Vite registration.
+
+On a fresh fork (no app under `src/` yet) the wizard runs the environment and connectivity steps and skips the rest — scaffold your app first, then re-run it. The pages step expects an app exposing the reference shared components (`shell`, `components/ui`, `components/charts`, `components/chart-state`, `components/pulse-graph`, as in the reference dashboards built from this template); the generated pages render working sample data on the design system, ready to swap for a real snapshot. Page templates live in `tools/setup-templates/` — edit those to change what gets scaffolded.
+
 ### Devcontainer & Playwright MCP
 
 Open in VS Code / Codespaces with the **Dev Containers** extension — `.devcontainer/devcontainer.json` points at `tools/image/docker/docker-compose.yml`:

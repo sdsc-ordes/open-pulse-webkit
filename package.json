@@ -1,0 +1,9 @@
+{
+  "name": "pulse-webkit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "setup": "node tools/setup.mjs",
+    "sync-agents": "node tools/sync-agents.mjs"
+  }
+}
