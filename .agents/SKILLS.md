@@ -155,7 +155,7 @@ The static-first data path (`AGENTS.md` → *Preferred approach*): a `scripts/fe
 
 ## 11. Integrate your own design system (as a skill)
 
-A brand is delivered to agents as a skill directory, not as app code — swapping brands means swapping the skill and updating one line in `AGENTS.md`. The app auto-adapts because it references only the **`--op-*` token contract** (the fixed name set in `frontend-dev` §2); a design skill supplies the values. `sdsc-ui-kit` is the reference layout for a full brand; `openpulse-dark-theme` shows the minimal delta-theme form (`SKILL.md` + `assets/tokens.css`):
+A brand is delivered to agents as a skill directory, not as app code — swapping brands means swapping the skill and updating one line in `AGENTS.md`. (The `new-dashboard` wizard can generate one of these *interactively* from a short design interview — Stage 1b, recipe in that skill's `references/design-skill.md`; this section is the manual equivalent.) The app auto-adapts because it references only the **`--op-*` token contract** (the fixed name set in `frontend-dev` §2); a design skill supplies the values. `sdsc-ui-kit` is the reference layout for a full brand; `openpulse-dark-theme` shows the minimal delta-theme form (`SKILL.md` + `assets/tokens.css`):
 
 ```
 .agents/skills/<your-brand>/

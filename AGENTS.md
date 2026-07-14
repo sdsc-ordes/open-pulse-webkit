@@ -100,7 +100,8 @@ open-pulse-webkit/
 │   ├── PROJECT.md      #   mission + data-source overview
 │   ├── SKILLS.md       #   concrete task recipes
 │   ├── settings.json   #   permissions + enabled MCP servers
-│   └── skills/         #   the 11 skills (frontend-dev + design skills + query-* + op-*)
+│   └── skills/         #   the 12 skills (new-dashboard + frontend-dev + design skills + query-* + op-*)
+├── .agents-plugin/     # Claude Code plugin + marketplace manifests (repo is installable as the `open-pulse` plugin)
 ├── .agents/            # generated mirror for AGENTS.md-standard tools + Pi (DO NOT EDIT)
 ├── AGENTS.md           # this file (canonical conventions)
 ├── AGENTS.md           # generated mirror of AGENTS.md
@@ -164,7 +165,8 @@ Under the shipped SDSC skills additionally: Space Grotesk headings / Switzer UI 
 
 - **Editing agent config:** edit `.agents/` only, then run `node tools/sync-agents.mjs` to regenerate `.agents/` + `AGENTS.md`. CI (`agents-sync` job) fails if they drift.
 - **Node on PATH:** the sync script needs Node. If `node` isn't on your PATH, invoke it with a full path to any local Node binary (CI uses its own Node, so this is a local-only concern).
-- **Skills need `.env`:** the `query-*` / `op-*` skills read endpoints + credentials from `.env` at the repo root. Copy `.env.example` → `.env` and fill it in. Never commit `.env`.
+- **Skills need `.env`:** the `query-*` / `op-*` skills read endpoints + credentials from `.env` at the project root (they walk up from the CWD first, then from the script's own location, so they also work when installed as the plugin). Copy `.env.example` → `.env` and fill it in. Never commit `.env`.
+- **Plugin packaging:** `.agents-plugin/plugin.json` + `marketplace.json` make this repo installable via `/plugin marketplace add sdsc-ordes/open-pulse-webkit` → `/plugin install open-pulse@open-pulse`. `plugin.json` points `skills` at `.agents/skills/`, so skill edits ship in both modes automatically. Bump `version` in `plugin.json` on skill-visible changes; sanity-check with `claude plugin validate .`. The guided entry point for downstream users is the `new-dashboard` skill.
 - **Publishing:** the app is intended to be published to **GitHub Pages** as a static site — see the README's *Publishing to GitHub Pages* section. (There is no public dev tunnel; that infrastructure was removed.)
 
 ---

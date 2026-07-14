@@ -30,6 +30,8 @@ The three `op-*` skills share the same host and `OPENPULSE_*` credentials; this 
 
 ## Run
 
+> **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.agents/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.agents/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
+
 ```bash
 # Cross-store inventory: per-store repo/user/org counts, SPARQL named graphs, duckdb collection sizes
 python .agents/skills/op-collections/query.py stats

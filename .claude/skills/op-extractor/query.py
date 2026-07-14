@@ -52,17 +52,17 @@ from pathlib import Path
 
 
 def load_dotenv() -> None:
-    here = Path(__file__).resolve()
-    for parent in [here.parent, *here.parents]:
-        env = parent / ".env"
-        if env.is_file():
-            for raw in env.read_text().splitlines():
-                line = raw.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, value = line.partition("=")
-                os.environ.setdefault(key.strip(), value.strip())
-            return
+    for start in (Path.cwd(), Path(__file__).resolve().parent):
+        for parent in [start, *start.parents]:
+            env = parent / ".env"
+            if env.is_file():
+                for raw in env.read_text().splitlines():
+                    line = raw.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, _, value = line.partition("=")
+                    os.environ.setdefault(key.strip(), value.strip())
+                return
 
 
 def request(method: str, path: str, params=None, body=None, admin=False, raw=False) -> int:

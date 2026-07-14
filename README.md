@@ -25,7 +25,8 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 
 | | What it is | Where |
 |---|---|---|
-| 🧠 **Agent skills** | 11 ready-to-use skills the agent can call to query Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections) and to do frontend work | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🧠 **Agent skills** | 12 ready-to-use skills: a guided **`new-dashboard` wizard** that interviews you and scaffolds your dashboard, 8 query skills for Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections), and the frontend/design skills | `.claude/skills/`, mirrored to `.agents/skills/` |
+| 🔌 **Claude Code plugin** | The same skills packaged as an installable plugin (`open-pulse`) — usable from *any* project without forking this repo | `.claude-plugin/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
 | 🎨 **Design system** | Swappable design skills + a fixed token contract, so generated UI looks on-brand and re-branding is a drop-in — see [Styling & the design system](#styling--the-design-system) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` skills |
 | 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
@@ -43,6 +44,38 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 - **[Pi coding agent](https://pi.dev)** — reads `AGENTS.md` and auto-discovers skills from `.agents/skills/`
 
 > The two copies are kept in sync automatically. **Only edit `.claude/`**, then run `node tools/sync-agents.mjs`. CI fails if they drift.
+
+---
+
+## Two ways to get the toolkit
+
+**A. Fork/clone this template (zero install).** Claude Code auto-discovers `CLAUDE.md` and `.claude/skills/` when you open the repo — accept the one-time workspace-trust prompt and everything is loaded. Other runtimes pick up `AGENTS.md` / `.agents/skills/` the same way.
+
+**B. Install the plugin in any project (Claude Code only).** No fork needed — the repo doubles as a plugin marketplace:
+
+```
+/plugin marketplace add sdsc-ordes/open-pulse-webkit
+/plugin install open-pulse@open-pulse
+```
+
+The skills then work in every project you open, namespaced as `/open-pulse:new-dashboard`, `/open-pulse:query-neo4j`, …. Put a `.env` with your Open Pulse credentials at the root of whichever project you're working in (same keys as [`.env.example`](.env.example)) — the skill scripts look there first.
+
+> Don't combine A and B in the same project: a clone already loads the project skills, so the plugin would load everything twice.
+
+---
+
+## The `/new-dashboard` setup wizard
+
+The fastest way to start. Run **`/new-dashboard`** (clone) or **`/open-pulse:new-dashboard`** (plugin) and it walks you from "I want a dashboard" to a running, verified app — one decision at a time:
+
+1. **Checks your setup** — confirms `.env` exists *and* that each store actually responds, so a section is never promised on a store that's down or unconfigured.
+2. **Interviews you** — what slice of the data to tell the story of, who the primary viewer is, a storytelling-vs-stats posture, and whether you have a design in mind.
+3. **Custom design (optional)** — if you don't want the SDSC look, it turns a short design Q&A into a reusable design skill implementing the `--op-*` token contract, and builds against it.
+4. **Proposes themes** — a proven landing-page-plus-four-themes skeleton you can take, adapt, or replace.
+5. **Checks coverage** — runs live queries against your scope so themes are only promised where the data exists.
+6. **Plans, then builds** — writes a one-page `DASHBOARD.md` spec for you to approve, then scaffolds `src/your-web/` with real snapshot data and verifies every page in the browser.
+
+Nothing is scaffolded until you've signed off on the plan.
 
 ---
 
