@@ -68,7 +68,9 @@ export interface PulseGraphNode {
   weight?: number;
   /** Extra lines for the tooltip. */
   meta?: string[];
-  /** ISO date this node first appears. Absent means "always visible". */
+  /** ISO date this node first appears. Absent means "date unknown" — while a
+   * timeline cutoff is active the node stays hidden, only joining when the
+   * cutoff is cleared (scrubbed to the end / full graph). */
   firstSeen?: string;
 }
 
@@ -76,7 +78,8 @@ export interface PulseGraphEdge {
   source: string;
   target: string;
   type?: string;
-  /** ISO date this edge first appears. Absent means "always visible". */
+  /** ISO date this edge first appears. Absent means the edge simply follows
+   * its endpoints' visibility. */
   firstSeen?: string;
 }
 
@@ -112,7 +115,8 @@ export interface PulseGraph {
   destroy: () => void;
   /** Show only nodes/edges first seen on or before this ISO date (fades the
    * rest out in place — the simulation keeps running so nothing jumps).
-   * Pass `null` to show everything. No-op if the graph has no dated nodes. */
+   * Nodes with no `firstSeen` are hidden while a cutoff is active. Pass
+   * `null` to show everything, undated nodes included. */
   setCutoff: (date: string | null) => void;
   /** Earliest/latest `firstSeen` across the graph's nodes, or `null` if none
    * carry a date — the range a timeline control should scrub across. */
@@ -164,12 +168,22 @@ export function createPulseGraph(
     return dates.length ? { min: dates[0], max: dates[dates.length - 1] } : null;
   })();
   let cutoff: string | null = null;
-  const isVisible = (firstSeen?: string): boolean => !cutoff || !firstSeen || firstSeen <= cutoff;
+  /** Undated nodes are "date unknown", not "always there": while a cutoff is
+   * active they stay hidden, only joining once the timeline reaches the end
+   * (cutoff cleared to `null`). */
+  const isNodeVisible = (n: { firstSeen?: string }): boolean =>
+    !cutoff || (n.firstSeen ? n.firstSeen <= cutoff : false);
+  /** An edge needs both endpoints on screen, plus its own date (if any) to
+   * have passed. */
+  const isEdgeVisible = (e: SimEdge): boolean =>
+    isNodeVisible(e.source) &&
+    isNodeVisible(e.target) &&
+    (!cutoff || !e.firstSeen || e.firstSeen <= cutoff);
   /** Which nodes are currently in the live simulation — as opposed to just
    * faded out. Tracked so `refreshActiveSet` only reheats the layout when
    * the cutoff actually crosses a node's `firstSeen`, not on every slider
    * tick. */
-  let activeNodeIds = new Set(nodes.filter((n) => isVisible(n.firstSeen)).map((n) => n.id));
+  let activeNodeIds = new Set(nodes.filter((n) => isNodeVisible(n)).map((n) => n.id));
 
   const adjacency = new Map<string, Set<string>>();
   for (const e of edges) {
@@ -291,26 +305,30 @@ export function createPulseGraph(
    * selected neighbourhood?). Folding both into one pass keeps them from
    * fighting when the slider moves while a node is focused. */
   function nodeOpacity(d: SimNode, focus: SimNode | null): number {
-    if (!isVisible(d.firstSeen)) return 0;
+    if (!isNodeVisible(d)) return 0;
     if (!focus) return 0.9;
     const near = adjacency.get(focus.id) ?? new Set<string>();
     return d.id === focus.id || near.has(d.id) ? 1 : 0.15;
   }
   function linkOpacity(e: SimEdge, focus: SimNode | null): number {
-    if (!isVisible(e.firstSeen)) return 0;
+    if (!isEdgeVisible(e)) return 0;
     if (!focus) return 0.35;
     return e.source.id === focus.id || e.target.id === focus.id ? 0.85 : 0.08;
   }
   function labelOpacity(d: SimNode, focus: SimNode | null): number {
-    if (!isVisible(d.firstSeen)) return 0;
+    if (!isNodeVisible(d)) return 0;
     if (!focus) return 1;
     const near = adjacency.get(focus.id) ?? new Set<string>();
     return d.id === focus.id || near.has(d.id) ? 1 : 0.2;
   }
+  /** The circle's outline is painted independently of its fill, so it has to
+   * be faded out too — fill-opacity 0 alone leaves an empty ring behind. */
+  const nodeStrokeOpacity = (d: SimNode): number => (isNodeVisible(d) ? 1 : 0);
 
   function applyFocus(focus: SimNode | null): void {
     nodeSel
       .attr('fill-opacity', (d) => nodeOpacity(d, focus))
+      .attr('stroke-opacity', nodeStrokeOpacity)
       .attr('stroke', (d) => (focus && d.id === focus.id ? RING_COLOR : '#0c0c12'));
     linkSel
       .attr('stroke-opacity', (e) => linkOpacity(e, focus))
@@ -322,13 +340,17 @@ export function createPulseGraph(
 
   function setCutoff(next: string | null): void {
     cutoff = next;
-    nodeSel.style('pointer-events', (d) => (isVisible(d.firstSeen) ? 'auto' : 'none'));
-    if (selected && !isVisible(selected.firstSeen)) {
+    nodeSel.style('pointer-events', (d) => (isNodeVisible(d) ? 'auto' : 'none'));
+    if (selected && !isNodeVisible(selected)) {
       selected = null;
       renderPinnedTooltip();
       opts.onSelect?.(null);
     }
-    nodeSel.transition().duration(150).attr('fill-opacity', (d) => nodeOpacity(d, selected));
+    nodeSel
+      .transition()
+      .duration(150)
+      .attr('fill-opacity', (d) => nodeOpacity(d, selected))
+      .attr('stroke-opacity', nodeStrokeOpacity);
     linkSel.transition().duration(150).attr('stroke-opacity', (e) => linkOpacity(e, selected));
     labelSel.transition().duration(150).attr('opacity', (d) => labelOpacity(d, selected));
     refreshActiveSet();
@@ -341,13 +363,11 @@ export function createPulseGraph(
    * around that subset and reflows as nodes join or leave it, instead of
    * every node holding the position it would have in the full, final graph. */
   function refreshActiveSet(): void {
-    const nextActive = nodes.filter((n) => isVisible(n.firstSeen));
+    const nextActive = nodes.filter((n) => isNodeVisible(n));
     const nextIds = new Set(nextActive.map((n) => n.id));
     if (nextIds.size === activeNodeIds.size && [...nextIds].every((id) => activeNodeIds.has(id))) return;
     activeNodeIds = nextIds;
-    const activeEdges = edges.filter(
-      (e) => isVisible(e.firstSeen) && nextIds.has(e.source.id) && nextIds.has(e.target.id),
-    );
+    const activeEdges = edges.filter((e) => isEdgeVisible(e));
     sim.nodes(nextActive);
     linkForce.links(activeEdges);
     sim.alpha(0.4).restart();
@@ -355,7 +375,7 @@ export function createPulseGraph(
 
   nodeSel
     .on('mouseenter', (event: MouseEvent, d) => {
-      if (!isVisible(d.firstSeen)) return;
+      if (!isNodeVisible(d)) return;
       applyFocus(d);
       tooltip.classList.remove('op-tooltip--pinned');
       tooltip.innerHTML = tooltipHtml(d);
