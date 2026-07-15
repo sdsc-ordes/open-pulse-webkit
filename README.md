@@ -28,7 +28,7 @@ You don't need to learn the Open Pulse APIs. You describe the dashboard; the age
 | 🧠 **Agent skills** | 12 ready-to-use skills: a guided **`new-dashboard` wizard** that interviews you and scaffolds your dashboard, 8 query skills for Open Pulse (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS health metrics](https://openpulse.epfl.ch/chaoss), the crawler, the extractor, collections), and the frontend/design skills | `.claude/skills/`, mirrored to `.agents/skills/` |
 | 🔌 **Claude Code plugin** | The same skills packaged as an installable plugin (`open-pulse`) — usable from *any* project without forking this repo | `.claude-plugin/` |
 | 📋 **Project docs for agents** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (task recipes) | repo root + `.claude/` / `.agents/` |
-| 🎨 **Design system** | Swappable design skills + a fixed token contract, so generated UI looks on-brand and re-branding is a drop-in — see [Styling & the design system](#styling--the-design-system) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` skills |
+| 🎨 **Design system** | Swappable design skills + a fixed token contract, so generated UI looks on-brand and re-branding is a drop-in — see [The design skills](#the-design-skills) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` skills |
 | 🐳 **Devcontainer** | Ubuntu dev image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
 | 🧪 **Playwright MCP** | Browser verification for agents — host (`npx`) or devcontainer (sidecar on `:8931`) | `.mcp.host.json` / `.mcp.docker.json` → `.mcp.json` |
 | 🔑 **Env template** | Documents the Open Pulse endpoints and credentials your skills need | `.env.example` |
@@ -47,50 +47,39 @@ The skills and project docs are written once (in `.claude/`) and mirrored into a
 
 ---
 
-## Two ways to get the toolkit
+## Installation
 
-**A. Fork/clone this template (zero install).** Claude Code auto-discovers `CLAUDE.md` and `.claude/skills/` when you open the repo — accept the one-time workspace-trust prompt and everything is loaded. Other runtimes pick up `AGENTS.md` / `.agents/skills/` the same way.
+There are two ways to get the toolkit — pick **one** per project:
 
-**B. Install the plugin in any project (Claude Code only).** No fork needed — the repo doubles as a plugin marketplace:
+| | Best for | You get |
+|---|---|---|
+| **[A. Fork the template](#option-a--fork-the-template)** | Building a new dashboard site from scratch | The full repo: skills, agent docs, design system, devcontainer, Pages publishing path |
+| **[B. Install the plugin](#option-b--install-the-plugin-claude-code-only)** | Adding the Open Pulse skills to an *existing* project (Claude Code only) | The same 12 skills, namespaced as `/open-pulse:*` |
 
-```
-/plugin marketplace add sdsc-ordes/open-pulse-webkit
-/plugin install open-pulse@open-pulse
-```
+> Don't combine the two in the same project: a fork already loads the project skills, so the plugin would load everything twice.
 
-The skills then work in every project you open, namespaced as `/open-pulse:new-dashboard`, `/open-pulse:query-neo4j`, …. Put a `.env` with your Open Pulse credentials at the root of whichever project you're working in (same keys as [`.env.example`](.env.example)) — the skill scripts look there first.
+### Option A — fork the template
 
-> Don't combine A and B in the same project: a clone already loads the project skills, so the plugin would load everything twice.
-
----
-
-## The `/new-dashboard` setup wizard
-
-The fastest way to start. Run **`/new-dashboard`** (clone) or **`/open-pulse:new-dashboard`** (plugin) and it walks you from "I want a dashboard" to a running, verified app — one decision at a time:
-
-1. **Checks your setup** — confirms `.env` exists *and* that each store actually responds, so a section is never promised on a store that's down or unconfigured.
-2. **Interviews you** — what slice of the data to tell the story of, who the primary viewer is, a storytelling-vs-stats posture, and whether you have a design in mind.
-3. **Custom design (optional)** — if you don't want the SDSC look, it turns a short design Q&A into a reusable design skill implementing the `--op-*` token contract, and builds against it.
-4. **Proposes themes** — a proven landing-page-plus-four-themes skeleton you can take, adapt, or replace.
-5. **Checks coverage** — runs live queries against your scope so themes are only promised where the data exists.
-6. **Plans, then builds** — writes a one-page `DASHBOARD.md` spec for you to approve, then scaffolds `src/your-web/` with real snapshot data and verifies every page in the browser.
-
-Nothing is scaffolded until you've signed off on the plan.
-
----
-
-## Quickstart
-
-1. **Use this template** on GitHub to create your own repo, then clone it.
-2. Copy the env file and fill in your Open Pulse endpoints/credentials:
+1. Click **Use this template** (or fork) on GitHub to create your own repo, then clone it.
+2. Copy the env file and fill in your Open Pulse endpoints/credentials (never commit `.env`):
    ```bash
    cp .env.example .env
    ```
-3. Open the repo in your agent and ask it to build something, e.g.
+3. Open the repo in your agent of choice. Claude Code auto-discovers `CLAUDE.md` and `.claude/skills/` — accept the one-time workspace-trust prompt and everything is loaded. Other runtimes pick up `AGENTS.md` / `.agents/skills/` the same way.
+
+#### First steps (fork)
+
+1. **Check connectivity.** Verify your filled-in credentials actually reach the stores before building anything:
+   ```bash
+   npm run check-connectivity        # or: node tools/check-connectivity.mjs
+   ```
+   It live-checks all five endpoints in `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — printing a ✔/✖ per store, so bad credentials or unreachable stores surface now rather than as empty charts later. Read-only; placeholder keys are skipped; a ✖ is diagnostic, not fatal.
+2. **Start with the wizard.** Run **`/new-dashboard`** — it interviews you, checks data coverage, and scaffolds the app one approved step at a time. See [The `/new-dashboard` skill](#the-new-dashboard-skill).
+3. **Or just ask.** Describe what you want directly, e.g.
    > *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
 
-   The agent will use the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill plus the active design skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
-4. Run the app locally (once it's scaffolded — see status below):
+   The agent uses the `query-chaoss` and `query-*` skills to pull real data from `openpulse.epfl.ch` and the `frontend-dev` skill plus the active design skill to build the UI on-brand (linking to `openpulse.science` in the attribution bar).
+4. **Run the app locally** (once it's scaffolded — see [Status](#status)):
    ```bash
    cd src/your-web
    npm install
@@ -99,17 +88,24 @@ Nothing is scaffolded until you've signed off on the plan.
 
 > **Bring your own framework.** This template doesn't prescribe a UI stack — the app lives in `src/your-web/` and you build it with whatever you like (plain HTML, React, Vue, Svelte, Astro, …). What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
 
-### Connectivity check
+### Option B — install the plugin (Claude Code only)
 
-Once you've copied `.env.example` → `.env` and filled in your Open Pulse credentials, verify they actually reach the stores before building anything:
+No fork needed — the repo doubles as a plugin marketplace. In any Claude Code project, run:
 
-```bash
-npm run check-connectivity        # or: node tools/check-connectivity.mjs
+```
+/plugin marketplace add sdsc-ordes/open-pulse-webkit
+/plugin install open-pulse@open-pulse
 ```
 
-It live-checks all five endpoints with the values in `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints a ✔/✖ per store (node counts, versions, reachability), so bad credentials or unreachable stores surface now rather than as empty charts later. It only reads: it never writes `.env` or any app file, and services whose keys are still placeholders are skipped. A ✖ is diagnostic, not fatal — fix the value in `.env` and re-run.
+The skills then work in every project you open, namespaced as `/open-pulse:new-dashboard`, `/open-pulse:query-neo4j`, ….
 
-### Devcontainer & Playwright MCP
+#### First steps (plugin)
+
+1. **Configure credentials.** Put a `.env` at the root of whichever project you're working in, with the same keys as [`.env.example`](.env.example) — the skill scripts look in the current project first (never commit it).
+2. **Start with the wizard.** Run **`/open-pulse:new-dashboard`**. In plugin mode it verifies your setup by probing each store through the query skills (the fork's `check-connectivity` script isn't available), so unreachable stores still surface before any section is promised. See [The `/new-dashboard` skill](#the-new-dashboard-skill).
+3. **Or query directly.** Ask a data question in your own words, or invoke a skill by name — `/open-pulse:query-chaoss` for repo health metrics, `/open-pulse:query-neo4j` for the graph, `/open-pulse:op-search` for semantic search, ….
+
+### Devcontainer & Playwright MCP (fork only)
 
 Open in VS Code / Codespaces with the **Dev Containers** extension — `.devcontainer/devcontainer.json` points at `tools/image/docker/docker-compose.yml`:
 
@@ -129,9 +125,22 @@ bash tools/image/docker/setup-mcp.sh host   # only if .mcp.json was switched by 
 
 ---
 
-## Styling & the design system
+## The `/new-dashboard` skill
 
-A brand is delivered to the agent **as a skill** (`.claude/skills/<name>/`), so re-branding means dropping in a new design skill and updating one line in `CLAUDE.md` — not rewriting app code. The app only ever references a fixed set of `--op-*` **token names** (the contract, defined in the `frontend-dev` skill); the active design skill supplies the values. The kit ships:
+The recommended way to start: a guided wizard that takes you from "I want a dashboard" to a running, verified app — one decision at a time. Run **`/new-dashboard`** (fork) or **`/open-pulse:new-dashboard`** (plugin):
+
+1. **Checks your setup** — confirms `.env` exists *and* that each store actually responds, so a section is never promised on a store that's down or unconfigured.
+2. **Interviews you** — what slice of the data to tell the story of, who the primary viewer is, a storytelling-vs-stats posture, and whether you have a design in mind.
+3. **Custom design (optional)** — if you don't want the SDSC look, it turns a short design Q&A into a reusable design skill implementing the `--op-*` token contract, and builds against it (see [the design skills](#the-design-skills) below).
+4. **Proposes themes** — a proven landing-page-plus-four-themes skeleton you can take, adapt, or replace.
+5. **Checks coverage** — runs live queries against your scope so themes are only promised where the data exists.
+6. **Plans, then builds** — writes a one-page `DASHBOARD.md` spec for you to approve, then scaffolds `src/your-web/` with real snapshot data and verifies every page in the browser.
+
+Nothing is scaffolded until you've signed off on the plan.
+
+### The design skills
+
+The look the wizard (and any direct UI request) builds against is delivered **as a skill** (`.claude/skills/<name>/`), so re-branding means dropping in a new design skill and updating one line in `CLAUDE.md` — not rewriting app code. The app only ever references a fixed set of `--op-*` **token names** (the contract, defined in the `frontend-dev` skill); the active design skill supplies the values. The kit ships:
 
 | Skill | Role | What it is |
 |---|---|---|
