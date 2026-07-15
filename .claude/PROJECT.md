@@ -123,7 +123,7 @@ These views are intended both as working tools and as **pattern examples**. They
 
 | View | Pattern it demonstrates |
 |---|---|
-| **Graph Explorer** | Reactive force-directed visualisation; temporal animation; full-page canvas layout |
+| **Graph Explorer** | Reactive force-directed visualisation; temporal replay via a timeline strip (scrub + playback, `openpulse-dark-theme` §8.1, reference code in `frontend-dev/examples/pulse-graph.ts`); full-page canvas layout |
 | **List / detail** (e.g. pipeline runs) | List + detail; status badges; tables; shared shell |
 | **Card grid** (e.g. service health) | Card grid; mixed-status surfaces (containers, endpoints, smoke tests) |
 

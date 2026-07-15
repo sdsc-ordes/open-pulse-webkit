@@ -402,8 +402,96 @@ A force-directed graph view is one of the reference layouts (full-page canvas). 
 - **D3 link colour**: `var(--op-blue)` (`#5561a6`).
 - **Selection ring** around an active node: `var(--op-blue-light)` (`#8a94c9`) at 80% opacity.
 - **Node fill colours**: §2.6.
+- **Tooltip**: hover uses the standard `.op-tooltip`; clicking a node *pins* it (`.op-tooltip--pinned`) — border switches to `--op-blue-light` and `pointer-events: auto` so a link inside it is clickable. The pinned tooltip is the node-detail surface; no separate side panel.
 
-Chrome around the canvas (header, query sidebar, node-detail panel, timeline strip) uses §6 and the base kit.
+```css
+.op-graph { border: 1px solid var(--op-border); overflow: hidden; }
+.op-tooltip--pinned { pointer-events: auto; border-color: var(--op-blue-light); }
+.op-tooltip--pinned a { color: var(--op-blue-light); }
+```
+
+Chrome around the canvas (header, query sidebar, node-detail panel) uses §6 and the base kit. The timeline strip is §8.1.
+
+### 8.1 Timeline strip (temporal replay)
+
+When the graph's nodes/edges carry first-seen dates, a timeline strip sits directly below the canvas: a scrubber that replays how the view grew. Anatomy, top to bottom, inside one `.op-timeline` block:
+
+```html
+<div class="op-timeline">
+  <p class="small muted">Evolution over time — press play (or drag) to replay how this view grew. …</p>
+  <div class="op-timeline-body">
+    <div class="op-timeline-chart"><!-- SVG: cumulative step curve + density rug (JS-drawn) --></div>
+    <div class="op-timeline-track">
+      <button class="op-timeline-play" type="button" aria-label="Play timeline">▶</button>
+      <input class="op-range" type="range">
+      <span class="small mono muted">as of 2024-03-17</span>
+    </div>
+    <div class="op-timeline-axis">
+      <div class="op-timeline-axis-line"></div>
+      <div class="op-timeline-axis-labels"><!-- 2–9 date labels --></div>
+      <div class="op-timeline-axis-annotations"><!-- first-appearance callouts --></div>
+    </div>
+    <div class="op-timeline-gridlines"><!-- dashed verticals, absolutely positioned layer --></div>
+  </div>
+</div>
+```
+
+Visual rules:
+
+- **Growth chart** (120px tall): a cumulative count of dated arrivals as a **step curve** (growth is a sequence of discrete arrivals, not a continuous quantity) — 1.5px line in the data-viz blue with an area fill at 0.18 opacity. Underneath, on its own hairline baseline (22px band, 8px gap): an **activity-density rug** — arrivals binned at roughly one bucket per 8px, drawn as short single-tone bars (faint text tone, 0.55 fill opacity, min height 1.5px). One calm texture, *not* one coloured tick per event — that reads as noise at real data volumes. Drawn in JS (SVG-hex exemption).
+- **Track**: a 32px square play button toggling `▶`/`⏸` (border `--op-border`, hover `--op-blue-light` text / `--op-blue` border — same footprint as the theme toggle); a native range input with `accent-color: var(--op-blue)`; a right-aligned mono readout with reserved width (`as of YYYY-MM-DD`, or `today (full graph)` at the far end) so the layout never shifts while scrubbing.
+- **Axis**: hairline top border; 2–9 evenly spaced date labels (11px `--op-text-faint`; label years when the span exceeds ~3 years, else `YYYY-MM`; first/last anchored flush to the ends). Below them, **first-appearance annotations** (e.g. when each organisation joined): 11px `--op-text-muted`, max-width 140px ellipsized, dropped greedily when they'd land within ~100px of their neighbour.
+- **Gridlines**: every labeled date gets a dashed `--op-border` vertical spanning growth chart, track, and axis — a date reads straight down from the curve to its label.
+- **Alignment**: the chart and axis carry a left inset of play-button width + gap (32 + 14 = 46px) and a right inset of readout width + gap (132 + 14 = 146px), so their x-axis lines up with the slider's own track without any runtime measurement.
+
+```css
+.op-timeline { margin-top: 16px; }
+.op-timeline-body { position: relative; isolation: isolate; margin-top: 6px; }
+.op-timeline-chart { margin: 0 146px 10px 46px; }
+.op-timeline-chart svg { display: block; }
+.op-timeline-track { display: flex; align-items: center; gap: 14px; height: 20px; }
+.op-range {
+  position: relative; z-index: 2; flex: 1 1 auto;
+  accent-color: var(--op-blue); height: 4px; background: transparent;
+}
+.op-timeline-track .mono { flex: 0 0 auto; white-space: nowrap; }
+.op-timeline-axis { position: relative; height: 40px; margin: 8px 146px 0 46px; }
+.op-timeline-axis-line {
+  position: absolute; left: 0; right: 0; top: 0;
+  border-top: 1px solid var(--op-border);
+}
+.op-timeline-axis-labels,
+.op-timeline-axis-annotations { position: relative; height: 14px; }
+.op-timeline-axis-labels { margin-top: 8px; }
+.op-timeline-axis-annotations { margin-top: 4px; }
+.op-timeline-axis-label {
+  position: absolute; top: 0; font-size: 11px;
+  color: var(--op-text-faint); white-space: nowrap;
+}
+.op-timeline-axis-annotation {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-size: 11px; color: var(--op-text-muted); white-space: nowrap;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; cursor: default;
+}
+.op-timeline-gridlines {
+  position: absolute; left: 46px; right: 146px; top: 0; bottom: 0;
+  pointer-events: none;
+}
+.op-timeline-gridline {
+  position: absolute; top: 0; bottom: 0;
+  border-left: 1px dashed var(--op-border);
+}
+.op-timeline-play {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; width: 32px; height: 32px;
+  border: 1px solid var(--op-border); background: none;
+  color: var(--op-text-muted); padding: 0; font-size: 13px; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.op-timeline-play:hover { color: var(--op-blue-light); border-color: var(--op-blue); }
+```
+
+Behaviour — the cutoff model, playback pacing, and per-view domain rescaling — is engineering, not design: see `frontend-dev` §5 and its copy-in reference `examples/pulse-graph.ts`.
 
 ---
 
