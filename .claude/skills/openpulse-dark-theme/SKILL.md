@@ -317,6 +317,74 @@ Square (`rounded-none`), translucent blue fill at **18% alpha** (higher than the
 
 Base-kit anatomy; dark values: `bg-op-surface`, `border-op-border`, text `--op-text`, placeholder `--op-text-muted`, focus `outline-2 outline-op-blue`. `rounded` (4px) per the base kit.
 
+### 6.7 Card media & avatars
+
+Cards that represent an external entity (a repository, an organisation, a person) may carry an image — but only as a **build-time data URI** (`frontend-dev` §6): the browser never fetches images from third parties at runtime. Markup always reserves space (explicit `width`/`height` or `aspect-ratio`) so nothing shifts on load, and every variant has a no-image fallback.
+
+**Repo card thumbnail** — a full-width 2:1 media block at the top of an `op-card--sm`; GitHub's social-preview card fits this slot. When there's no thumbnail, omit the `<img>` and drop the following element's top margin — text-only cards mix fine in the same grid.
+
+```html
+<div class="op-card op-card--sm">
+  <img src="data:image/webp;base64,…" alt="" class="op-repo-thumb" width="640" height="320" loading="lazy">
+  <p class="mono small" style="margin-top:16px"><a href="…">org/repo</a></p>
+  <p class="small muted" style="margin-top:6px">Short description…</p>
+</div>
+```
+
+**Org avatar** — a 48px circle beside the card title (the avatar `rounded-full` exception, §4). No image → a placeholder circle on `--op-surface-2`, same footprint.
+
+```html
+<div class="op-card op-card--sm op-org-card">
+  <img src="data:image/webp;base64,…" alt="" class="op-org-avatar" width="48" height="48" loading="lazy">
+  <!-- fallback: <div class="op-org-avatar op-org-avatar--placeholder"></div> -->
+  <div>
+    <p class="small" style="font-weight:600">Lab name</p>
+    <div class="micro faint mono"><span>24 repos</span> <span>13 people</span></div>
+  </div>
+</div>
+```
+
+**Initials avatar** — for people, never fetch a face: a 40px circle showing 1–2 mono initials in `--op-blue-light` (first letter of the first two name words, uppercased; `?` when the name is empty).
+
+```html
+<div class="op-person-card-head">
+  <div class="op-person-card-avatar mono">AL</div>
+  <p class="small" style="font-weight:600">Ada Lovelace</p>
+</div>
+```
+
+Clickable entity cards behave like links: hover shifts the card border to `--op-blue`, and keyboard focus gets a visible outline.
+
+```css
+.op-repo-thumb {
+  display: block; width: 100%; height: auto;
+  aspect-ratio: 2 / 1; object-fit: cover;
+  border: 1px solid var(--op-border);
+}
+.op-org-card {
+  display: flex; align-items: center; gap: 14px;
+  color: var(--op-text); transition: border-color 0.15s;
+}
+.op-org-card:hover { border-color: var(--op-blue); }
+.op-org-avatar {
+  width: 48px; height: 48px; border-radius: 9999px;
+  border: 1px solid var(--op-border); object-fit: cover; flex-shrink: 0;
+}
+.op-org-avatar--placeholder { background: var(--op-surface-2); }
+.op-person-card { cursor: pointer; transition: border-color 0.15s; }
+.op-person-card:hover { border-color: var(--op-blue); }
+.op-person-card:focus-visible { outline: 2px solid var(--op-blue); outline-offset: 2px; }
+.op-person-card-head { display: flex; align-items: center; gap: 12px; }
+.op-person-card-avatar {
+  width: 40px; height: 40px; flex-shrink: 0; border-radius: 9999px;
+  background: var(--op-surface-2); border: 1px solid var(--op-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: var(--op-blue-light);
+}
+```
+
+Where the images come from — sources, sizing, WebP conversion, payload bounds — is engineering: `frontend-dev` §6 and its reference script `examples/fetch-images.mjs`.
+
 ---
 
 ## 7. Layouts
