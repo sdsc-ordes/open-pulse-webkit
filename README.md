@@ -15,32 +15,26 @@
 - An AI coding agent — [Claude Code](https://claude.com/claude-code) works best; Codex, Cursor, and [Pi](https://pi.dev) work too
 - Open Pulse credentials — ask whoever runs your Open Pulse deployment (for the SDSC instance, see [openpulse.science](https://openpulse.science))
 
-### Step 1 — Get the kit (choose one)
+### Two ways to install
 
-**Option A — copy the template (recommended).** On this repo's GitHub page click **Use this template → Create a new repository** (don't fork — a template copy gives you a clean, independent repo), clone your new repo, and open it in your agent. Everything loads automatically — just accept the one-time workspace-trust prompt.
+- **Option A — copy the template** *(recommended)*: start a new dashboard repo from scratch. You get the full kit — skills, agent docs, design system, devcontainer, GitHub Pages publishing path.
+- **Option B — install the plugin** *(Claude Code only)*: add the same skills to a project you already have.
 
-**Option B — install the plugin (Claude Code only).** No new repo needed — adds the same tools to any project you already have:
+Pick **one** per project (combining them loads every skill twice), then follow that option's steps below.
 
-```
-/plugin marketplace add sdsc-ordes/open-pulse-webkit
-/plugin install open-pulse@open-pulse
-```
+### Option A — copy the template
 
-> Pick **one**. A template copy already contains the skills; installing the plugin on top would load everything twice.
+**1. Create your repo.** On this repo's GitHub page click **Use this template → Create a new repository** (don't fork — a template copy gives you a clean, independent repo). Clone it and open it in your agent; accept the one-time workspace-trust prompt and everything loads automatically.
 
-### Step 2 — Add your credentials
-
-The agent needs credentials to reach the Open Pulse data stores. In your project folder, copy the template env file and fill it in:
+**2. Add your credentials.** In the repo folder:
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` in any editor and replace every `xxxxxxxx` placeholder with the real values you got.
+Open `.env` in your own editor and replace every `xxxxxxxx` placeholder with the real values you got. **Never paste credentials into the chat with your AI agent** — it only needs to know the file exists and will never ask for the values; if a credential does end up in a chat, treat it as exposed and ask for a replacement. (`.env` is git-ignored — never commit it.)
 
-> **Fill it in yourself, outside the chat.** Edit `.env` directly in your editor — **never paste credentials into the conversation with your AI agent**, and the agent will never ask you to. It only needs to know the file exists; the connectivity check below confirms the values work without anyone reading them back. If a credential does end up in a chat, treat it as exposed and ask for a replacement.
-
-Then check it works:
+**3. Check the connection.**
 
 ```bash
 npm run check-connectivity
@@ -48,26 +42,15 @@ npm run check-connectivity
 
 Each data store prints **✔** (reachable), **✖** (wrong credential or store down), or **•** (skipped — placeholder not filled in). Fix any ✖ in `.env` and re-run.
 
-> **Plugin users:** your project has no `.env.example` yet — skip this step. The wizard (next step) creates the file for you and tells you exactly what to fill in.
->
-> **Never commit `.env`** — it holds credentials. The template's `.gitignore` already excludes it.
+**4. Build your dashboard.** In your agent, type:
 
-### Step 3 — Run the dashboard wizard
+```
+/new-dashboard
+```
 
-In your agent, type:
+The wizard interviews you one decision at a time — what the dashboard is about, who it's for, how it should look — verifies the data for your scope actually exists, writes a one-page plan for your approval, and only then builds the app and verifies every page in a real browser.
 
-- `/new-dashboard` — template copy
-- `/open-pulse:new-dashboard` — plugin
-
-The wizard first sets up anything still missing (project folders, `.env` — with exact instructions), then interviews you one decision at a time: what the dashboard is about, who it's for, how it should look. It verifies the data for your scope actually exists, writes a one-page plan for your approval, and only then builds the app and verifies every page in a real browser.
-
-**Or just ask.** You can skip the wizard and describe what you want directly, e.g.
-
-> *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
-
-The agent uses the query skills to pull real data and the design skills to build the UI on-brand. You can also invoke a skill by name — `/query-chaoss` for repo health metrics, `/query-neo4j` for the graph, `/op-search` for semantic search, … (prefix with `open-pulse:` in plugin mode).
-
-### Step 4 — See it running
+**5. See it running.**
 
 ```bash
 cd src/your-web
@@ -75,7 +58,42 @@ npm install
 npm run dev
 ```
 
-Open the printed URL in your browser. From here on, just keep asking your agent for changes in plain language — it knows how to query Open Pulse and how to keep the UI on-brand.
+Open the printed URL in your browser.
+
+### Option B — install the plugin (Claude Code only)
+
+**1. Install.** In your Claude Code project, run:
+
+```
+/plugin marketplace add sdsc-ordes/open-pulse-webkit
+/plugin install open-pulse@open-pulse
+```
+
+**2. Build your dashboard.** Type:
+
+```
+/open-pulse:new-dashboard
+```
+
+The wizard sets up your project first — it creates the folders and the `.env.example` template, then tells you exactly which credential goes where. Fill `.env` in your own editor; **never paste credentials into the chat**. Once your credentials check out, it interviews you, verifies the data exists for your scope, writes a one-page plan for your approval, then builds and verifies the app in a real browser.
+
+**3. See it running.**
+
+```bash
+cd src/your-web
+npm install
+npm run dev
+```
+
+Open the printed URL in your browser.
+
+### After install
+
+Keep asking your agent for changes in plain language — it knows how to query Open Pulse and keep the UI on-brand. You can also skip the wizard and just describe what you want, e.g.
+
+> *"Add a repo health page with CHAOSS metrics — contributors, closure ratio, absence factor, license coverage, and release frequency."*
+
+…or invoke a skill by name — `/query-chaoss` for repo health metrics, `/query-neo4j` for the graph, `/op-search` for semantic search, … (prefix with `open-pulse:` in plugin mode).
 
 > **Bring your own framework.** The kit doesn't prescribe a UI stack — the app lives in `src/your-web/` and can be plain HTML, React, Vue, Svelte, Astro, …. What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
 
