@@ -37,6 +37,10 @@ The graph layer (`query-neo4j`).
 - The force-directed collaboration graph is the platform's signature visual — invest real
   design effort in its readability, and build it as a **reusable component**, not a
   one-off.
+- The graph comes **with its timeline strip**: a scrubber that replays how the network
+  grew, driven by `firstSeen` dates baked into the graph snapshot. It's part of the graph
+  deliverable, not an optional extra (mechanics: `frontend-dev` §5 + its `pulse-graph.ts`
+  example; visuals: design skill *Graph Explorer → Timeline strip*).
 
 ## Theme 3 — Community Health & Activity: "How alive and healthy is it?"
 
@@ -49,6 +53,11 @@ metrics, not a separate section. Structure around the three CHAOSS questions:
   contributor absence factor, elephant factor (who *builds and sustains* it).
 - **FAIR/quality** — licenses declared, documentation discoverability (can others
   *reuse* it).
+
+Present the metrics **as CHAOSS metrics**: official metric names (*Contributor Absence
+Factor*, *Change Request Closure Ratio*, …), grouped under the three buckets, values from
+the CHAOSS API, provenance naming it. A reader should see the word CHAOSS on the page —
+never dissolve these into unlabeled "activity" charts.
 
 Titling rule: distinguish **ecosystem growth** (more repositories in scope over time)
 from **per-repo growth** (one project's contributor/commit trajectory). They are
