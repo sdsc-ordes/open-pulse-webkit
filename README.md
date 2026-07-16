@@ -67,7 +67,10 @@ Open the printed URL in your browser.
 ```
 /plugin marketplace add sdsc-ordes/open-pulse-webkit
 /plugin install open-pulse@open-pulse
+/reload-plugins
 ```
+
+The last command loads the freshly installed skills into your current session — needed once after installing; no restart required.
 
 **2. Build your dashboard.** Type:
 
