@@ -2,7 +2,7 @@
 
 **Build an interactive dashboard on [Open Pulse](https://openpulse.science) data — with an AI coding agent doing most of the work.**
 
-[Open Pulse](https://openpulse.science) is a research-software-observability platform by the Swiss Data Science Center (SDSC): data about research code — repositories, contributors, commits, organisations, publications. This kit teaches your AI coding agent how to query that data and build a dashboard from it. You describe what you want; the agent fetches real data and builds the UI.
+[Open Pulse](https://openpulse.science) is a research-software-observability platform by the Swiss Data Science Center (SDSC): data about research code — repositories, contributors, commits, organisations, publications. This kit teaches your AI coding agent how to query that data and build a dashboard from it. You describe what you want; the agent fetches real data and builds the UI — in whatever web framework you prefer.
 
 ---
 
@@ -98,7 +98,9 @@ Keep asking your agent for changes in plain language — it knows how to query O
 
 …or invoke a skill by name — `/query-chaoss` for repo health metrics, `/query-neo4j` for the graph, `/op-search` for semantic search, … (prefix with `open-pulse:` in plugin mode).
 
-> **Bring your own framework.** The kit doesn't prescribe a UI stack — the app lives in `src/your-web/` and can be plain HTML, React, Vue, Svelte, Astro, …. What's fixed and reusable is the Open Pulse **skills** and the **design system**; everything else is yours.
+### Bring your own framework
+
+The kit doesn't prescribe a UI stack. The app lives in `src/your-web/` and can be plain HTML, React, Vue, Svelte, Astro, web components — whatever you (or your agent) prefer; the wizard asks rather than assumes. What's fixed and reusable is framework-neutral: the Open Pulse **query skills** and the **design system** (a contract of CSS custom properties). Everything else is yours to swap.
 
 ---
 
