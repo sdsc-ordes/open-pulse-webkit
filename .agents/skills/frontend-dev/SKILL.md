@@ -64,8 +64,15 @@ A passing type-check/build is a correctness gate, **not** a feature-correctness 
 
 - Canvas and D3 drawing code **cannot read CSS custom properties** — hex literals are allowed there, and only there.
 - Keep all visualization colours in **one module** (a `NODE_COLORS` map plus link/ring constants), with values taken from the active design skill's data-viz palette. No second hex table anywhere.
-- Re-run the force simulation whenever `nodes`/`edges` inputs change; build the graph inside `requestAnimationFrame` (nodes spawning at (0,0) means the simulation wasn't warmed up).
-- Time-based visibility filtering (e.g. a `currentDate` scrubber) happens **before** data is passed to the graph component, not inside it.
+- Re-run the force simulation whenever the `nodes`/`edges` **inputs** change wholesale (a different dataset or filter selection); build the graph inside `requestAnimationFrame` (nodes spawning at (0,0) means the simulation wasn't warmed up).
+- **Temporal scrub (timeline replay)** is the exception to re-passing data: when nodes/edges carry `firstSeen` dates, the graph component owns the cutoff. Expose `setCutoff(isoDate | null)` and a `dateRange`, and **fade filtered elements in place** — re-passing filtered data would rebuild the layout and make the graph jump on every slider tick.
+  - Compute element opacity **once, as the product of two independent concerns** — the timeline cutoff (is this element born yet?) and hover/click focus (is it in the selected neighbourhood?) — so the slider and focus dimming never fight over the same attribute.
+  - Fading an element out means fading **every painted channel**. An SVG circle's fill and stroke are independent: zeroing `fill-opacity` alone leaves the outline behind as a ghost ring punched through the edges behind it. Drive `stroke-opacity` in step with the fill (in both the cutoff transition and the focus path).
+  - Elements **without a `firstSeen` date** mean "date unknown", not "always there". Hide them while any cutoff is active and let them join only at the slider's max position (`null` cutoff / full graph) — otherwise undated items sit on screen from the very first frame, before anything "old" exists. Undated **edges** instead just follow their endpoints' visibility.
+  - Scope the **simulation** to the visible subset as well: drop not-yet-born nodes/edges from `sim.nodes()` and the link force, so charge/collide/link act only on what's on screen and the layout reflows as nodes join. Track the active id-set and reheat (`alpha(0.4).restart()`) only when the cutoff actually crosses a `firstSeen` — never on every slider tick.
+  - **Playback**: the play button steps the cutoff over a fixed wall-clock duration (~12 s at ~60 ms ticks), so replay takes the same time whatever the date span; grabbing the slider by hand always stops playback.
+  - The timeline control rescales its domain to the **current view's own** first/last dates (switching a filter replays that subset's history, not the whole dataset's), and treats the slider's max position as `null` cutoff ("show everything").
+- A reference implementation of all of the above ships with this skill: [`examples/pulse-graph.ts`](examples/pulse-graph.ts) — plain TypeScript + `d3`, framework-free. Copy it into your app; its visuals (canvas surface, overlays, tooltip, timeline strip) are specced in the active design skill's Graph Explorer section.
 
 ## 6. Build-time injection
 
