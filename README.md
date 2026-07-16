@@ -38,7 +38,11 @@ The agent needs credentials to reach the Open Pulse data stores. In your project
 cp .env.example .env
 ```
 
-Open `.env` in any editor and replace every `xxxxxxxx` placeholder with the real values you got. Then check it works:
+Open `.env` in any editor and replace every `xxxxxxxx` placeholder with the real values you got.
+
+> **Fill it in yourself, outside the chat.** Edit `.env` directly in your editor — **never paste credentials into the conversation with your AI agent**, and the agent will never ask you to. It only needs to know the file exists; the connectivity check below confirms the values work without anyone reading them back. If a credential does end up in a chat, treat it as exposed and ask for a replacement.
+
+Then check it works:
 
 ```bash
 npm run check-connectivity
