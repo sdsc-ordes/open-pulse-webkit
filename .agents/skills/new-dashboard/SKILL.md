@@ -1,6 +1,6 @@
 ---
 name: new-dashboard
-description: Guided wizard that interviews the user and scaffolds an Open Pulse dashboard in src/your-web/ — asks about scope, design intent, drill-down themes, stack, and publishing; checks the stores are reachable and cover the scope before promising sections; when the user wants a non-SDSC look, generates a custom design skill from a short interview; writes a short plan the user approves; then scaffolds, wires real data, and verifies in the browser. TRIGGER when the user wants to start a new dashboard or site on Open Pulse, asks "where do I start?", or wants help deciding what to build. SKIP when they ask a specific data question (query-* / op-* skills) or a specific UI task on an already-scaffolded app (frontend-dev).
+description: Guided wizard that interviews the user and scaffolds an Open Pulse dashboard in src/your-web/ — first sets up the project structure and walks the user through creating .env (works in plugin mode on an empty project); asks about scope, design intent, drill-down themes, stack, and publishing; checks the stores are reachable and cover the scope before promising sections; when the user wants a non-SDSC look, generates a custom design skill from a short interview; writes a short plan the user approves; then scaffolds, wires real data, and verifies in the browser. TRIGGER when the user wants to start a new dashboard or site on Open Pulse, asks "where do I start?", or wants help deciding what to build. SKIP when they ask a specific data question (query-* / op-* skills) or a specific UI task on an already-scaffolded app (frontend-dev).
 ---
 
 # New Dashboard wizard
@@ -15,13 +15,26 @@ Walk the user from "I want a dashboard" to a running, verified scaffold — one 
 - Follow the repo defaults from `AGENTS.md`: static-first (GitHub Pages, no server runtime), build-time data snapshots, D3 for bespoke interactive charts, the required attribution bar, and `--op-*` design tokens only.
 - Before writing any UI, read the `frontend-dev` skill and the active design skill declared in `AGENTS.md` (if those design skills are installed).
 
-## Stage 0 — Situational & connectivity check (no questions yet)
+## Stage 0 — Project setup, `.env`, & connectivity check (no questions yet)
 
-Look at `src/your-web/`. If an app already exists there, ask whether to **extend it** or **start fresh** before anything else. If `.env` is missing at the project root, tell the user to copy `.env.example` → `.env` and fill in credentials now — the rest of the wizard needs live store access.
+First establish which mode you're in: a **template checkout** of pulseWebKit (repo root has `AGENTS.md`, `.env.example`, `tools/check-connectivity.mjs`), or **plugin mode** — the skill installed via the `open-pulse` plugin into some other project, possibly an empty one.
 
-Then **verify the stores actually respond** — don't wait until Stage 3 to discover a store is down.
+**1. Create the project structure first.** Before checking anything, make sure the project has the pieces the wizard depends on. In plugin mode (or any project missing them), create:
 
-- **Clone / template checkout (preferred):** run `npm run check-connectivity` (`node tools/check-connectivity.mjs`). It live-checks all five stores against the repo-root `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints one line each: **✔** reachable (with a node count / version), **✖** configured but unreachable (wrong credential, or the store is down), and **• skipped** — the key is still an `.env.example` placeholder, i.e. *not configured*. If it reports no `.env`, send the user to copy `.env.example` → `.env` first.
+- `src/your-web/` — the app directory the scaffold will fill (leave it empty for now).
+- `.env.example` at the project root — copy it **verbatim** from this skill's own `assets/env.example` (next to this SKILL.md). Never invent the keys from memory.
+- A `.gitignore` entry for `.env` — append `.env` if the file exists, create it if not. Do this *before* the user creates `.env`, so credentials can't be committed by accident.
+
+In a template checkout all of this already exists — skip creation. If an app already exists in `src/your-web/`, ask whether to **extend it** or **start fresh** before anything else.
+
+**2. Then check for `.env` — and tell the user exactly what to do.** Look for `.env` at the project root:
+
+- **Missing:** stop and give precise, copy-pasteable instructions — not just "set up your env". Tell them to run `cp .env.example .env`, open `.env`, and replace every `xxxxxxxx` placeholder with real credentials: `NEO4J_AUTH` (Neo4j), `SPARQL_AUTH` (Oxigraph), `OPENSEARCH_PASSWORD` (OpenSearch), `CHAOSS_AUTH` (metrics API), and `OPENPULSE_AUTH` / `OPENPULSE_ADMIN_AUTH` (hub — the read password is enough unless they'll run crawls/extractions). Credentials come from whoever operates their Open Pulse deployment ([openpulse.science](https://openpulse.science) for the SDSC instance). Remind them `.env` must never be committed. Then **wait for them to say it's done** before probing.
+- **Present but with placeholders:** name the exact keys still unfilled and what each unlocks, so they can decide whether to fill them now — a store with a placeholder key is *skipped*, not broken, and Stage 2–3 simply won't promise sections that need it.
+
+**3. Verify the stores actually respond** — don't wait until Stage 3 to discover a store is down.
+
+- **Clone / template checkout (preferred):** run `npm run check-connectivity` (`node tools/check-connectivity.mjs`). It live-checks all five stores against the repo-root `.env` — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS metrics API, and the Open Pulse hub — and prints one line each: **✔** reachable (with a node count / version), **✖** configured but unreachable (wrong credential, or the store is down), and **• skipped** — the key is still an `.env.example` placeholder, i.e. *not configured*. If it reports no `.env`, go back to step 2 above.
 - **Plugin mode, or if the script isn't there:** the script reads the *webkit* repo-root `.env`, not the host project's, so it can't help a plugin-in-a-foreign-project. Fall back to one cheap probe per store with the query skills you already have — `query-neo4j` `MATCH (n) RETURN count(n)`, `query-sparql` `ASK { ?s ?p ?o }`, `query-opensearch` root ping, one `query-chaoss` metric, one `op-collections` `/api/stats/` — and report the same three states per store.
 
 Either way, distinguish **not configured** (a placeholder key — fixable by filling in `.env`) from **configured but unreachable** (bad credential, or the store is down), and carry the per-store verdict into Stages 2–3: a store that can't answer now cannot back a theme later, so don't promise a section it can't fill.
