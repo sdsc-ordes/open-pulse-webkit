@@ -152,6 +152,7 @@ The static-first data path (`AGENTS.md` → *Preferred approach*): a `scripts/fe
 - **Resolve discipline labels.** `op:discipline` values are Wikidata QIDs — resolve to English labels at fetch time via `wbgetentities` (batch ≤ 45 ids), falling back to the QID.
 - **Trim the graph for readability** in the script, not the component: keep all orgs, repos with ≥ 1 contributor, people connected to ≥ 2 repos plus the top individual contributors; record what was dropped in a `stats` block so the UI can say so.
 - **Stamp every snapshot** with `fetchedAt` + scope metadata, and print row counts as the script runs — silent truncation reads as full coverage.
+- **Images are snapshots too.** A companion `scripts/fetch-images.mjs` (run after `fetch-data`) bakes org avatars, repo social-preview thumbnails, and partner logos into `src/data/images.json` as WebP data URIs — the browser never fetches images from third parties. Engineering rules + reference script: `frontend-dev` §6 / `examples/fetch-images.mjs`; media-slot visuals: the active design skill (in `openpulse-dark-theme`: §6.7).
 
 ## 11. Integrate your own design system (as a skill)
 

@@ -125,7 +125,7 @@ These views are intended both as working tools and as **pattern examples**. They
 |---|---|
 | **Graph Explorer** | Reactive force-directed visualisation; temporal replay via a timeline strip (scrub + playback, `openpulse-dark-theme` §8.1, reference code in `frontend-dev/examples/pulse-graph.ts`); full-page canvas layout |
 | **List / detail** (e.g. pipeline runs) | List + detail; status badges; tables; shared shell |
-| **Card grid** (e.g. service health) | Card grid; mixed-status surfaces (containers, endpoints, smoke tests) |
+| **Card grid** (e.g. service health) | Card grid; mixed-status surfaces (containers, endpoints, smoke tests); entity cards with build-time media thumbnails and avatars (`openpulse-dark-theme` §6.7) |
 
 Together they cover the three layout archetypes a downstream user is most likely to need (full-page canvas, list/detail, card grid). Their anatomy lives in the `sdsc-ui-kit` skill (`references/layouts.md`); the dark dashboard mappings live in the `openpulse-dark-theme` skill (§7–§8).
 

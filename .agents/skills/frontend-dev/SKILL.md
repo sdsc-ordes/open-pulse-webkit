@@ -78,6 +78,7 @@ A passing type-check/build is a correctness gate, **not** a feature-correctness 
 
 - **Build timestamp**: the required attribution bar (§7) shows the build time in ISO 8601 UTC. Inject it via the bundler's define/env mechanism (e.g. a `__BUILD_TIMESTAMP__` define) or generate it into the HTML at build — **never compute it in the browser**.
 - **Data snapshots**: the static-first data path bakes typed JSON at build time (`scripts/fetch-data.mjs` querying the stores with the `query-*` skill transports) — recipe in `.agents/SKILLS.md` §10. Credentials stay at build time; the browser never talks to the stores.
+- **Image snapshots**: every image the app renders is baked at build time too — a `scripts/fetch-images.mjs` (run after `fetch-data`) fetches org avatars (`https://github.com/<org>.png?size=128`), repo social-preview thumbnails (`https://opengraph.githubassets.com/1/<owner>/<repo>`), and any partner logos; resizes and converts them to WebP (`sharp`); and inlines them as base64 data URIs in a JSON module pages import. The browser never fetches an image from a third party — no hotlinking, no tracking, nothing breaks offline. Keep the payload bounded: snapshot only images that actually render (e.g. the 8 cards of a "latest additions" feed, not the whole catalogue), and retry-then-skip on fetch failure so markup falls back to its no-image variant. Reference script: [`examples/fetch-images.mjs`](examples/fetch-images.mjs); the media slots' visual spec is the active design skill's (in `openpulse-dark-theme`: §6.7).
 
 ## 7. Required shared components
 
