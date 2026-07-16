@@ -8,8 +8,6 @@
 
 ## Part 1 — Get started
 
-*No prior knowledge needed.*
-
 ### What you need
 
 - A [GitHub](https://github.com) account
@@ -19,7 +17,7 @@
 
 ### Step 1 — Get the kit (choose one)
 
-**Option A — copy the template (recommended).** On this repo's GitHub page click **Use this template** (or fork), clone your new repo, and open it in your agent. Everything loads automatically — just accept the one-time workspace-trust prompt.
+**Option A — copy the template (recommended).** On this repo's GitHub page click **Use this template → Create a new repository** (don't fork — a template copy gives you a clean, independent repo), clone your new repo, and open it in your agent. Everything loads automatically — just accept the one-time workspace-trust prompt.
 
 **Option B — install the plugin (Claude Code only).** No new repo needed — adds the same tools to any project you already have:
 
@@ -99,7 +97,7 @@ Open the printed URL in your browser. From here on, just keep asking your agent 
 | | What it is | Where |
 |---|---|---|
 | 🧠 **Agent skills** | The guided **`new-dashboard` wizard**, 8 query skills (Neo4j graph, SPARQL metadata, OpenSearch, semantic search, [CHAOSS metrics](https://openpulse.epfl.ch/chaoss), crawler, extractor, collections), and the frontend/design skills | `.claude/skills/`, mirrored to `.agents/skills/` |
-| 🔌 **Claude Code plugin** | The same skills packaged as the installable `open-pulse` plugin — usable from any project without forking | `.claude-plugin/` |
+| 🔌 **Claude Code plugin** | The same skills packaged as the installable `open-pulse` plugin — usable from any project without copying the template | `.claude-plugin/` |
 | 📋 **Agent docs** | `CLAUDE.md` / `AGENTS.md` (conventions), `PROJECT.md` (mission + data sources), `SKILLS.md` (recipes) | repo root + `.claude/` |
 | 🎨 **Design system** | Swappable design skills over a fixed `--op-*` token contract — see [The design skills](#the-design-skills) | `frontend-dev` + `openpulse-dark-theme` + `sdsc-ui-kit` |
 | 🐳 **Devcontainer** | Ubuntu image + Playwright MCP sidecar (VS Code / Codespaces) | `.devcontainer/` + `tools/image/docker/` |
