@@ -28,6 +28,20 @@ Both scripts read `OPENPULSE_ENDPOINT` (base host, e.g. `https://openpulse.epfl.
 | `query-neo4j` · `query-sparql` · `query-opensearch` | a raw query against one live store |
 | `query-chaoss` | a pre-computed CHAOSS metric for a repo/project |
 
+## Identifiers — how this store keys things
+
+Search is **by meaning, not by key** — the input is free text plus a provider name, so use this skill when you *don't* already know a repo's exact identifier, and one of the other skills once you do.
+
+| Thing | Form |
+|---|---|
+| Provider | bare name — `github_repos`, `zenodo_records`, `orcid`, … (`manifest` lists them) |
+| Hit `id` | provider-specific; see `id_shape` in `manifest` |
+| `payload.entity_id` | the store's own id, e.g. `{owner}/{name}` for `github_repos` |
+
+Hits are ranked, not exact: a query naming one repo will return similar ones too, so verify `entity_id` before treating a hit as *the* repo. Feed that `entity_id` into `query-sparql` / `query-neo4j` (as `https://github.com/{entity_id}`) or `query-chaoss` (split on `/`).
+
+See `.agents/SKILLS.md` §12 for the full identifier map.
+
 ## Run
 
 > **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.agents/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.agents/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).
@@ -110,3 +124,5 @@ Output is JSON (pretty-printed). Errors print `http <code>: <body>` to stderr an
 | `http 422` | Missing/!malformed body — `query` is required; `--filter` must be valid JSON. |
 | results from the wrong entity type | Pass `--target` (see the provider table). |
 | `network error` | Host unreachable — check VPN / DNS for `openpulse.epfl.ch`. |
+| `network error: request timed out` (scripts cap at 90s) | **Almost certainly a transient GME outage, not slowness — retry before investigating.** Healthy search latency is well under 10s for every provider: measured 2026-07-21 at 0.6–1.7s for `github_repos`, `ror`, `zenodo_records` and ~5.6s for `infoscience`. Nothing legitimately approaches 90s, so a timeout means the extractor service is wedged (it restarts periodically after memory-leak hits). The tell: `stats` / `freshness` / `manifest` keep answering while `search` hangs — those don't touch the embedding path. |
+| `http 503: <provider> index module unavailable` | Usually the same transient outage — `ror` returned this and then served queries in 1.7s once GME recovered. Retry first; only treat the provider as undeployed if it fails consistently while other providers succeed. |

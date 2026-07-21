@@ -2,10 +2,11 @@
 // Query the Open Pulse CHAOSS Metrics API.
 //
 // All endpoints are GET -> JSON, computed live per repository or per
-// GrimoireLab project. Reads CHAOSS_ENDPOINT (base URL, e.g.
-// https://openpulse.epfl.ch) and CHAOSS_AUTH (format: user/password)
-// from the nearest .env walking up, or from process.env. Auth is HTTP
-// Basic; the username is ignored, only the password matters.
+// GrimoireLab project. Reads OPENPULSE_ENDPOINT (base URL, e.g.
+// https://openpulse.epfl.ch) and OPENPULSE_AUTH (format: user/password)
+// from the nearest .env walking up, or from process.env; CHAOSS_ENDPOINT /
+// CHAOSS_AUTH override them if set. Auth is HTTP Basic; the username is
+// ignored, only the token matters.
 //
 // Subcommands:
 //   catalogue                       all 35 metric specs (static)
@@ -72,6 +73,49 @@ function parseArgs(argv) {
 	return { positionals, opts };
 }
 
+const WINDOW_MIN = 7;
+const WINDOW_MAX = 3650;
+const WINDOW_BUCKETS = [30, 90, 180, 365, 730, 1825, 3650];
+
+// CHAOSS keys repos as SEPARATE owner + repo path segments — not a URL, not a
+// slug. Accept the forms people actually type and rewrite them in place.
+function normalizeRepo(cmd, p) {
+	if (cmd !== 'repo' || !p[0]) return;
+	let owner = p[0].trim();
+	for (const prefix of ['https://github.com/', 'http://github.com/', 'github.com/']) {
+		if (owner.toLowerCase().startsWith(prefix)) {
+			owner = owner.slice(prefix.length);
+			break;
+		}
+	}
+	owner = owner.replace(/\/+$/, '');
+	if (owner.endsWith('.git')) owner = owner.slice(0, -4);
+
+	if (owner.includes('/')) {
+		const [head, ...rest] = owner.split('/');
+		const tail = rest.join('/');
+		if (p[1] && p[2]) {
+			console.error(`error: ambiguous repo arguments: '${p[0]}' plus '${p[1]}' and '${p[2]}'`);
+			process.exit(2);
+		}
+		if (p[1] && !p[2]) p[2] = p[1];   // the old p[1] was really the metric slug
+		p[0] = head;
+		p[1] = tail;
+	} else {
+		p[0] = owner;
+	}
+
+	if (!p[1]) {
+		console.error("error: `repo` needs an owner and a repo name — e.g. " +
+			"`repo Biohub esm`, `repo Biohub/esm`, or a full github.com URL");
+		process.exit(2);
+	}
+	if (p[1].includes('/')) {
+		console.error(`error: repo name must not contain '/': '${p[1]}'`);
+		process.exit(2);
+	}
+}
+
 function buildPath(cmd, p) {
 	switch (cmd) {
 		case 'catalogue':
@@ -102,7 +146,23 @@ function buildPath(cmd, p) {
 
 function buildQuery(opts) {
 	const q = new URLSearchParams();
-	if (opts.window !== undefined) q.set('window', opts.window);
+	if (opts.window !== undefined) {
+		// The API 422s outside 7–3650 and snaps to the NEAREST bucket inside it
+		// (ties round down; verified 2026-07-21: 400→365, 600→730, 60→30).
+		const w = Number(opts.window);
+		if (!Number.isFinite(w) || w < WINDOW_MIN || w > WINDOW_MAX) {
+			console.error(`error: --window must be between ${WINDOW_MIN} and ${WINDOW_MAX} days, got ${opts.window}`);
+			process.exit(2);
+		}
+		const effective = WINDOW_BUCKETS.reduce((best, b) =>
+			Math.abs(b - w) < Math.abs(best - w) ? b : best, WINDOW_BUCKETS[0]);
+		if (effective !== w) {
+			console.error(`warning: --window ${w} snaps to ${effective} days ` +
+				`(buckets: ${WINDOW_BUCKETS.join(', ')}); ` +
+				'the response reports the effective value in `window_days`');
+		}
+		q.set('window', opts.window);
+	}
 	if (opts.include) q.set('include', opts.include);
 	if (opts.refresh) q.set('refresh', '1');
 	if (opts.category) q.set('category', opts.category);
@@ -122,15 +182,16 @@ async function main() {
 		process.exit(2);
 	}
 
-	const endpoint = process.env.CHAOSS_ENDPOINT;
-	const auth = process.env.CHAOSS_AUTH;
+	const endpoint = process.env.CHAOSS_ENDPOINT || process.env.OPENPULSE_ENDPOINT;
+	const auth = process.env.CHAOSS_AUTH || process.env.OPENPULSE_AUTH;
 	if (!endpoint || !auth || !auth.includes('/')) {
-		console.error('error: CHAOSS_ENDPOINT and CHAOSS_AUTH (user/password) must be set');
+		console.error('error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set');
 		process.exit(2);
 	}
 
 	const [user, ...rest] = auth.split('/');
 	const password = rest.join('/');
+	normalizeRepo(cmd, positionals);
 	const path = buildPath(cmd, positionals);
 	const qs = buildQuery(opts);
 	let url = `${endpoint.replace(/\/$/, '')}${path}`;

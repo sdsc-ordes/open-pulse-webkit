@@ -2,11 +2,12 @@
 """Query the Open Pulse CHAOSS Metrics API.
 
 All endpoints are GET -> JSON, computed live per repository or per
-GrimoireLab project. Reads CHAOSS_ENDPOINT (base URL, e.g.
-https://openpulse.epfl.ch) and CHAOSS_AUTH (format: user/password) from
-.env at the repo root, or from the environment. Auth is HTTP Basic; the
-username is ignored, only the password matters (read-only password is
-enough for every query here).
+GrimoireLab project. Reads OPENPULSE_ENDPOINT (base URL, e.g.
+https://openpulse.epfl.ch) and OPENPULSE_AUTH (format: user/password) from
+.env at the repo root, or from the environment; CHAOSS_ENDPOINT /
+CHAOSS_AUTH override them if set. Auth is HTTP Basic; the username is
+ignored, only the token matters (a reader token is enough for every
+query here).
 
 Subcommands:
     catalogue                         all 35 metric specs (static)
@@ -61,6 +62,46 @@ def load_dotenv() -> None:
                 return
 
 
+def normalize_repo(args: argparse.Namespace) -> None:
+    """CHAOSS keys repos as SEPARATE owner + repo path segments — not a URL, not a slug.
+
+    Accept the forms people actually type and rewrite them in place, so
+    `repo https://github.com/Biohub/esm` and `repo Biohub/esm` both work
+    instead of 404-ing on a path containing 'None'.
+    """
+    if args.command != "repo" or not args.a:
+        return
+    owner = args.a.strip()
+    for prefix in ("https://github.com/", "http://github.com/", "github.com/"):
+        if owner.lower().startswith(prefix):
+            owner = owner[len(prefix):]
+            break
+    owner = owner.rstrip("/")
+    if owner.endswith(".git"):
+        owner = owner[:-4]
+
+    if "/" in owner:
+        # A combined "owner/repo" was passed as one argument. Split it and
+        # shift any later positionals right so `repo owner/name slug` works.
+        head, _, tail = owner.partition("/")
+        if args.b and args.c:
+            print(f"error: ambiguous repo arguments: {args.a!r} plus {args.b!r} and {args.c!r}", file=sys.stderr)
+            raise SystemExit(2)
+        if args.b and not args.c:
+            args.c = args.b          # the old b was really the metric slug
+        args.a, args.b = head, tail
+    else:
+        args.a = owner
+
+    if not args.b:
+        print("error: `repo` needs an owner and a repo name — e.g. "
+              "`repo Biohub esm`, `repo Biohub/esm`, or a full github.com URL", file=sys.stderr)
+        raise SystemExit(2)
+    if "/" in args.b:
+        print(f"error: repo name must not contain '/': {args.b!r}", file=sys.stderr)
+        raise SystemExit(2)
+
+
 def build_path(args: argparse.Namespace) -> str:
     cmd = args.command
     if cmd == "catalogue":
@@ -87,9 +128,27 @@ def build_path(args: argparse.Namespace) -> str:
     raise SystemExit(f"unknown command: {cmd}")
 
 
+WINDOW_MIN, WINDOW_MAX = 7, 3650
+WINDOW_BUCKETS = (30, 90, 180, 365, 730, 1825, 3650)
+
+
 def build_query(args: argparse.Namespace) -> dict[str, str]:
     q: dict[str, str] = {}
     if args.window is not None:
+        # The API 422s outside 7–3650 and snaps upward inside it. Fail fast
+        # locally with a useful message, and warn when the effective window
+        # won't be the one that was asked for.
+        if not WINDOW_MIN <= args.window <= WINDOW_MAX:
+            print(f"error: --window must be between {WINDOW_MIN} and {WINDOW_MAX} days, got {args.window}",
+                  file=sys.stderr)
+            raise SystemExit(2)
+        # Server snaps to the NEAREST bucket, ties rounding down
+        # (verified 2026-07-21: 400→365, 600→730, 60→30).
+        effective = min(WINDOW_BUCKETS, key=lambda b: (abs(b - args.window), b))
+        if effective != args.window:
+            print(f"warning: --window {args.window} snaps to {effective} days "
+                  f"(buckets: {', '.join(map(str, WINDOW_BUCKETS))}); "
+                  f"the response reports the effective value in `window_days`", file=sys.stderr)
         q["window"] = str(args.window)
     if args.include:
         q["include"] = args.include
@@ -118,13 +177,14 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv()
-    endpoint = os.environ.get("CHAOSS_ENDPOINT")
-    auth = os.environ.get("CHAOSS_AUTH")
+    endpoint = os.environ.get("CHAOSS_ENDPOINT") or os.environ.get("OPENPULSE_ENDPOINT")
+    auth = os.environ.get("CHAOSS_AUTH") or os.environ.get("OPENPULSE_AUTH")
     if not endpoint or not auth or "/" not in auth:
-        print("error: CHAOSS_ENDPOINT and CHAOSS_AUTH (user/password) must be set", file=sys.stderr)
+        print("error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set", file=sys.stderr)
         return 2
 
     user, _, password = auth.partition("/")
+    normalize_repo(args)
     path = build_path(args)
     query = build_query(args)
     url = f"{endpoint.rstrip('/')}{path}"
@@ -146,6 +206,9 @@ def main() -> int:
         return 1
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
+        return 1
+    except TimeoutError:
+        print("network error: request timed out", file=sys.stderr)
         return 1
 
     if args.raw:

@@ -30,31 +30,31 @@ Two URLs appear throughout this kit — they are **not** interchangeable:
 | URL | Role |
 |---|---|
 | **[openpulse.science](https://openpulse.science)** | The project's **main public page** — marketing, documentation, ontology namespaces (`https://openpulse.science/git-metadata-extractor#`, …). Downstream apps link here in the required attribution bar (`Built using openpulse.science at …`). |
-| **[openpulse.epfl.ch](https://openpulse.epfl.ch)** | The **first live deployment node** — the SDSC hub where Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API, collections, extractor, and crawler all run. Skills, `.env`, and server-side proxies point at this host (often with port suffixes like `:7502`, `:7503`, `:7508`). |
+| **[openpulse.epfl.ch](https://openpulse.epfl.ch)** | The **first live deployment node** — the SDSC hub where Neo4j, SPARQL, OpenSearch, the CHAOSS metrics API, collections, extractor, and crawler all run. Skills, `.env`, and server-side proxies point at this host over **HTTPS only** (`OPENPULSE_ENDPOINT`) — the raw store ports are plain HTTP and must not be used. |
 
 When wiring data or running query skills, use `openpulse.epfl.ch`. When citing the platform or linking for end users, use `openpulse.science`.
 
 ### Neo4j — the property graph
 
-- **Endpoints:** `:7503` (HTTP/REST/browser), `:7504` (Bolt for official drivers)
-- **Contents:** Repositories, Contributors/Persons, Commits, Organisations, PullRequests, and the relationships between them
-- **Use it for:** "Who contributed to what, when?" questions; graph traversal; visualisations of collaboration over time
-- **Skill:** `query-neo4j` (Cypher → JSON rows). Always include `LIMIT` on exploratory queries — the graph has tens of thousands of nodes.
+- **Endpoint:** `POST {OPENPULSE_ENDPOINT}/api/databases/cypher/query` (hub gateway, HTTPS, reader token; read-only — write clauses return 403)
+- **Contents:** Repositories, Users, Organisations, ROR institutions, and the relationships between them (contributions, stars, ownership, dependencies, …)
+- **Use it for:** "Who contributed to what?" questions; graph traversal; visualisations of collaboration
+- **Skill:** `query-neo4j` (Cypher → JSON rows). Always include `LIMIT` on exploratory queries — the graph has millions of nodes.
 
 ### Oxigraph (SPARQL) — RDF metadata
 
-- **Endpoint:** `:7502`, behind a Caddy proxy that terminates HTTP-Basic auth (`/query` for reads, `/update` for writes)
-- **Contents:** ~2.45M triples in the current production snapshot (`https://open-pulse.epfl.ch/graph/2026-05/hybrid`), plus utility graphs (`_backup/…`, `_links/identity`) and in-progress snapshots (`2026-06/hybrid`, …). **Default graph mode** — plain `{ ?s ?p ?o }` without a `GRAPH` clause — resolves to that production snapshot. Use explicit `GRAPH <…>` to pin a snapshot or reach non-default graphs. See `query-sparql` skill.
-- **Named-graph convention:** production snapshots live at `https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid`; pipeline `sparql_upload` promotes the current month into both the named graph and the default graph. Inventory: `op-collections stats` → `sparql.named_graphs`.
+- **Endpoint:** `POST {OPENPULSE_ENDPOINT}/sparql/query` (hub gateway, HTTPS, reader token; `/sparql/update` needs an admin token)
+- **Contents:** ~3.3M triples in the promoted production default graph, plus named graphs — monthly snapshots (`…/graph/{YYYY-MM}/hybrid`, `…/rule-based`) and utility graphs (`_backup/…`, `_links/identity`). **Default graph mode** — plain `{ ?s ?p ?o }` without a `GRAPH` clause — resolves to the promoted production data. Use explicit `GRAPH <…>` to pin a snapshot or reach non-default graphs. See `query-sparql` skill.
+- **Named-graph convention:** monthly snapshots live at `https://open-pulse.epfl.ch/graph/{YYYY-MM}/{variant}`, where the variant records **how the triples were derived** — `rule-based` (deterministic extraction, no agentic inference) or `hybrid` (rule-based plus agent-applied corrections and enrichment). The **default graph is cumulative** across months, not a copy of the latest snapshot. Use `hybrid` for best-quality metadata, `rule-based` when you need reproducible provenance, and diff the two to measure what the agents contributed. Not every month has both variants. Inventory: `op-collections stats` → `sparql.named_graphs`.
 - **Use it for:** Structured metadata, vocabulary/ontology queries, repo stars/licenses/languages, contributions, ORCID↔GitHub bridges, scholarly articles
 - **Skill:** `query-sparql` (SELECT/ASK/CONSTRUCT/DESCRIBE). Updates are intentionally not supported by the skill — use `curl` explicitly if you need to mutate.
 
 ### OpenSearch — search & enriched indices
 
-- **Endpoint:** `:9200`, OpenSearch 3.x with the security plugin and self-signed TLS (clients usually disable verification in dev)
-- **Contents:** GrimoireLab-enriched indices — `git`, `git_enriched`, `github`, `github_enriched`, `github_pull_requests_enriched`, `github_repo_enriched`, etc.
-- **Use it for:** Full-text search across commits/issues/PRs, aggregations over enriched fields, log-like investigations
-- **Skill:** `query-opensearch` (health, indices, count, search DSL). Use `--size 0` for aggregation-only queries; `terms` aggs on strings need `.keyword`.
+- **Endpoint:** `POST {OPENPULSE_ENDPOINT}/api/databases/opensearch/query` (hub gateway, HTTPS, reader token; two modes — OpenSearch **SQL** (`SELECT`/`SHOW`/`DESCRIBE`) or full search **DSL** with an `index` key)
+- **Contents:** GrimoireLab-enriched indices — `git_demo_enriched` and friends (commit-level docs)
+- **Use it for:** Commit-level search, full-text queries, and DSL aggregations over enriched fields
+- **Skill:** `query-opensearch` (SQL or `--dsl <index>` → JSON rows). Reader tokens can query; index listing (`SHOW TABLES`) is admin-only — take index names from the skill's SKILL.md.
 
 ### Higher-level hub skills
 

@@ -86,6 +86,9 @@ def http_get(path: str, params: dict[str, str] | None, raw: bool) -> int:
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
         return 1
+    except TimeoutError:
+        print("network error: request timed out", file=sys.stderr)
+        return 1
     if raw:
         sys.stdout.buffer.write(body)
         if not body.endswith(b"\n"):

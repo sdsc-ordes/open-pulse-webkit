@@ -28,6 +28,18 @@ Both scripts read `OPENPULSE_ENDPOINT` (base URL, e.g. `https://openpulse.epfl.c
 
 The three `op-*` skills share the same host and `OPENPULSE_*` credentials; this one only ever reads.
 
+## Identifiers — how this store keys things
+
+Rows are plain DuckDB records. For `github_repos` the repo is split across **two columns**, `owner` and `name` — there is no URL column, so `--q` does a full-text filter and you match the pair yourself:
+
+```bash
+python .claude/skills/op-collections/query.py rows github_repos --q "Biohub/esm" --size 5
+```
+
+`--q` is a **filter, not a lookup**: it can return near-misses (searching `esm` also matches `OpenSeesModel`), so always confirm `owner` and `name` on the row you use. The `raw` column holds the untouched GitHub API payload, and `repo_id` is `{owner}/{name}`.
+
+Cross-store: SPARQL and Cypher key on `https://github.com/{owner}/{name}`; CHAOSS takes `owner` + `repo` as path segments; OpenSearch uses a clone URL whose `.git` suffix varies. See `.claude/SKILLS.md` §12.
+
 ## Run
 
 > **Plugin install?** If this skill runs from the `open-pulse` plugin instead of a repo checkout, the scripts live under the plugin root — replace the `.claude/skills/` prefix in the commands below with `${CLAUDE_PLUGIN_ROOT}/.claude/skills/`. Credentials are unchanged: a `.env` at your project root (keys as in the template's `.env.example`).

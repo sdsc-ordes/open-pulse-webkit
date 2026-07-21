@@ -1,9 +1,14 @@
 #!/usr/bin/env node
-// Run a Cypher query against the Open Pulse Neo4j HTTP transactional API.
+// Run a Cypher query against the Open Pulse hub gateway (HTTPS).
 //
-// Reads NEO4J_HTTP_ENDPOINT and NEO4J_AUTH (format: user/password) from
-// the nearest .env walking up from the CWD (then from this file), or from process.env.
-// Prints the rows as JSON to stdout.
+// Reads OPENPULSE_ENDPOINT and OPENPULSE_AUTH (format: user/password;
+// username ignored, the token is what matters) from the nearest .env
+// walking up from the CWD (then from this file), or from process.env,
+// and posts to {OPENPULSE_ENDPOINT}/api/databases/cypher/query. Prints
+// the rows as JSON to stdout.
+//
+// Reader tokens get a read-only Neo4j transaction — any write clause
+// (CREATE/MERGE/DELETE/SET) returns 403.
 //
 // Usage:
 //   node query.mjs 'MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n'
@@ -55,14 +60,32 @@ async function readQuery(argv) {
 	return positional;
 }
 
+// Identifier properties hold FULL GitHub URLs, not bare slugs. Matching
+// `full_name:'owner/repo'` is the most common cause of a silent empty result.
+function warnBareIdentifiers(cypher) {
+	const re = /\b(full_name|login)\b\s*:\s*(['"])([^'"]*)\2/g;
+	let m;
+	while ((m = re.exec(cypher)) !== null) {
+		const value = m[3];
+		if (value && !/^https?:\/\//.test(value)) {
+			console.error(
+				`warning: ${m[1]} matched against '${value}', which is not a full URL — ` +
+				`identifiers in this graph are full GitHub URLs ` +
+				`(try 'https://github.com/${value.replace(/^\/+/, '')}'). ` +
+				`This query will likely return zero rows.`
+			);
+		}
+	}
+}
+
 async function main() {
 	const argv = process.argv.slice(2);
 	await loadDotenv();
 
-	const endpoint = process.env.NEO4J_HTTP_ENDPOINT;
-	const auth = process.env.NEO4J_AUTH;
+	const endpoint = process.env.OPENPULSE_ENDPOINT;
+	const auth = process.env.OPENPULSE_AUTH;
 	if (!endpoint || !auth || !auth.includes('/')) {
-		console.error('error: NEO4J_HTTP_ENDPOINT and NEO4J_AUTH (user/password) must be set');
+		console.error('error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set');
 		process.exit(2);
 	}
 
@@ -73,10 +96,9 @@ async function main() {
 		console.error('error: empty query');
 		process.exit(2);
 	}
+	warnBareIdentifiers(cypher);
 
-	const dbFlag = argv.indexOf('--database');
-	const database = dbFlag !== -1 ? argv[dbFlag + 1] : 'neo4j';
-	const url = `${endpoint.replace(/\/$/, '')}/db/${database}/tx/commit`;
+	const url = `${endpoint.replace(/\/$/, '')}/api/databases/cypher/query`;
 	const token = Buffer.from(`${user}:${password}`).toString('base64');
 
 	let res;
@@ -88,7 +110,7 @@ async function main() {
 				'Content-Type': 'application/json',
 				Accept: 'application/json'
 			},
-			body: JSON.stringify({ statements: [{ statement: cypher }] })
+			body: JSON.stringify({ query: cypher })
 		});
 	} catch (e) {
 		console.error(`network error: ${e.message}`);
@@ -101,14 +123,8 @@ async function main() {
 	}
 
 	const payload = await res.json();
-	if (payload.errors && payload.errors.length > 0) {
-		console.error(JSON.stringify(payload.errors, null, 2));
-		process.exit(1);
-	}
-
-	const result = payload.results[0];
-	const rows = result.data.map((r) =>
-		Object.fromEntries(result.columns.map((c, i) => [c, r.row[i]]))
+	const rows = payload.rows.map((r) =>
+		Object.fromEntries(payload.columns.map((c, i) => [c, r[i]]))
 	);
 	process.stdout.write(JSON.stringify(rows, null, 2) + '\n');
 }

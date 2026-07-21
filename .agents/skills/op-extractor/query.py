@@ -94,6 +94,9 @@ def request(method: str, path: str, params=None, body=None, admin=False, raw=Fal
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
         return 1
+    except TimeoutError:
+        print("network error: request timed out", file=sys.stderr)
+        return 1
     if raw:
         sys.stdout.buffer.write(out)
         if not out.endswith(b"\n"):
