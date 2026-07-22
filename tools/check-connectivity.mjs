@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 /* pulseWebKit connectivity check.
  *
- * Reads the repo-root .env and live-checks every Open Pulse endpoint with
- * the credentials in it — Neo4j, SPARQL (Oxigraph), OpenSearch, the CHAOSS
- * metrics API, and the Open Pulse hub. Run it after filling in .env, so bad
- * credentials or unreachable stores surface now rather than as empty charts
- * later:
+ * Reads the repo-root .env and live-checks every Open Pulse endpoint
+ * through the hub HTTPS gateway — Neo4j (Cypher), SPARQL (Oxigraph),
+ * OpenSearch, the CHAOSS metrics API, and the Open Pulse hub itself — using
+ * OPENPULSE_ENDPOINT/OPENPULSE_AUTH (the per-store *_ENDPOINT/*_AUTH vars
+ * only override where a store is derived from). Run it after filling in
+ * .env, so bad credentials or an unreachable gateway surface now rather
+ * than as empty charts later:
  *
  *   npm run check-connectivity      (repo root)
  *   node tools/check-connectivity.mjs
@@ -110,65 +112,68 @@ Live-checks every Open Pulse endpoint with the credentials in your .env.`);
   const timeout = () => AbortSignal.timeout(10_000);
   console.log(`\n  Using ${bold(rel(envPath))}\n`);
 
-  await checkService('Neo4j', ['NEO4J_HTTP_ENDPOINT', 'NEO4J_AUTH'], env, async () => {
-    const ep = env.NEO4J_HTTP_ENDPOINT.replace(/\/$/, '');
-    const res = await fetch(`${ep}/db/neo4j/tx/commit`, {
+  // Every store is reached through the one HTTPS hub gateway. *_ENDPOINT /
+  // *_AUTH per-store vars only override where a store's URL/token is
+  // derived from — they are not separate raw transports.
+  const gatewayEndpoint = (env.OPENPULSE_ENDPOINT ?? '').replace(/\/$/, '');
+  const gatewayAuth = (key, fallbackKey = 'OPENPULSE_AUTH') =>
+    isPlaceholder(env[key]) ? env[fallbackKey] : env[key];
+
+  await checkService('Neo4j (Cypher via gateway)', ['OPENPULSE_ENDPOINT', 'OPENPULSE_AUTH'], env, async () => {
+    const res = await fetch(`${gatewayEndpoint}/api/databases/cypher/query`, {
       method: 'POST',
       headers: {
-        Authorization: basicAuth(env.NEO4J_AUTH),
+        Authorization: basicAuth(env.OPENPULSE_AUTH),
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify({ statements: [{ statement: 'MATCH (n) RETURN count(n) AS n' }] }),
+      body: JSON.stringify({ query: 'MATCH (n) RETURN count(n) AS n' }),
       signal: timeout(),
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     const body = await res.json();
-    if (body.errors?.length) throw new Error(body.errors[0].message ?? body.errors[0].code);
-    return `${fmtCount(body.results[0].data[0].row[0])} nodes`;
+    return `${fmtCount(body.rows[0][0])} nodes`;
   });
 
-  await checkService('SPARQL (Oxigraph)', ['SPARQL_ENDPOINT'], env, async () => {
-    const ep = env.SPARQL_ENDPOINT.replace(/\/$/, '');
-    const headers = { 'Content-Type': 'application/sparql-query', Accept: 'application/sparql-results+json' };
-    if (!isPlaceholder(env.SPARQL_AUTH)) headers.Authorization = basicAuth(env.SPARQL_AUTH);
+  await checkService('SPARQL (Oxigraph via gateway)', ['OPENPULSE_ENDPOINT', 'OPENPULSE_AUTH'], env, async () => {
+    const ep = isPlaceholder(env.SPARQL_ENDPOINT) ? `${gatewayEndpoint}/sparql` : env.SPARQL_ENDPOINT.replace(/\/$/, '');
+    const auth = gatewayAuth('SPARQL_AUTH');
     const res = await fetch(`${ep}/query`, {
       method: 'POST',
-      headers,
-      body: 'ASK { ?s ?p ?o }',
+      headers: {
+        Authorization: basicAuth(auth),
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/sparql-results+json',
+      },
+      body: `query=${encodeURIComponent('ASK { ?s ?p ?o }')}`,
       signal: timeout(),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     const body = await res.json();
     return body.boolean ? 'reachable, graph has triples' : 'reachable (empty default graph)';
   });
 
-  await checkService(
-    'OpenSearch',
-    ['OPENSEARCH_ENDPOINT', 'OPENSEARCH_USERNAME', 'OPENSEARCH_PASSWORD'],
-    env,
-    async () => {
-      const ep = env.OPENSEARCH_ENDPOINT.replace(/\/$/, '');
-      const auth = `Basic ${Buffer.from(`${env.OPENSEARCH_USERNAME}:${env.OPENSEARCH_PASSWORD}`).toString('base64')}`;
-      const proxy = ['1', 'true', 'yes'].includes((env.OPENSEARCH_DASHBOARDS_PROXY ?? '').toLowerCase());
-      if (ep.startsWith('https:')) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // self-signed cluster cert
-      const res = proxy
-        ? await fetch(`${ep}/api/console/proxy?path=%2F&method=GET`, {
-            method: 'POST',
-            headers: { Authorization: auth, 'osd-xsrf': 'true' },
-            signal: timeout(),
-          })
-        : await fetch(`${ep}/`, { headers: { Authorization: auth }, signal: timeout() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json().catch(() => ({}));
-      const version = body?.version?.number;
-      return version ? `v${version}${proxy ? ' (via Dashboards proxy)' : ''}` : 'reachable';
-    },
-  );
+  await checkService('OpenSearch (via gateway)', ['OPENPULSE_ENDPOINT', 'OPENPULSE_AUTH'], env, async () => {
+    const res = await fetch(`${gatewayEndpoint}/api/databases/opensearch/query`, {
+      method: 'POST',
+      headers: {
+        Authorization: basicAuth(env.OPENPULSE_AUTH),
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ mode: 'sql', query: 'SELECT count(*) FROM git_demo_enriched' }),
+      signal: timeout(),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+    const body = await res.json();
+    return `${fmtCount(body.rows[0][0])} commit docs`;
+  });
 
-  await checkService('CHAOSS metrics API', ['CHAOSS_ENDPOINT', 'CHAOSS_AUTH'], env, async () => {
-    const ep = env.CHAOSS_ENDPOINT.replace(/\/$/, '');
+  await checkService('CHAOSS metrics API (via gateway)', ['OPENPULSE_ENDPOINT', 'OPENPULSE_AUTH'], env, async () => {
+    const ep = isPlaceholder(env.CHAOSS_ENDPOINT) ? gatewayEndpoint : env.CHAOSS_ENDPOINT.replace(/\/$/, '');
+    const auth = gatewayAuth('CHAOSS_AUTH');
     const res = await fetch(`${ep}/api/v1/metrics/chaoss`, {
-      headers: { Authorization: basicAuth(env.CHAOSS_AUTH), Accept: 'application/json' },
+      headers: { Authorization: basicAuth(auth), Accept: 'application/json' },
       signal: timeout(),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -176,8 +181,7 @@ Live-checks every Open Pulse endpoint with the credentials in your .env.`);
   });
 
   await checkService('Open Pulse hub', ['OPENPULSE_ENDPOINT', 'OPENPULSE_AUTH'], env, async () => {
-    const ep = env.OPENPULSE_ENDPOINT.replace(/\/$/, '');
-    const res = await fetch(`${ep}/api/stats/`, {
+    const res = await fetch(`${gatewayEndpoint}/api/stats/`, {
       headers: { Authorization: basicAuth(env.OPENPULSE_AUTH), Accept: 'application/json' },
       signal: timeout(),
     });

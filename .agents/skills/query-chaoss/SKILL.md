@@ -5,9 +5,9 @@ description: Query the Open Pulse CHAOSS Metrics API — 35 community/popularity
 
 # Query CHAOSS Metrics (Open Pulse hub)
 
-This skill ships two equivalent scripts that hit the Open Pulse CHAOSS Metrics API. Every endpoint is a `GET` returning JSON, computed live by the hub on top of the three stores (Neo4j + Oxigraph/SPARQL + OpenSearch). Both scripts read `CHAOSS_ENDPOINT` (base URL, e.g. `https://openpulse.epfl.ch`) and `CHAOSS_AUTH` (format `user/password`) from `.env` at the repo root.
+This skill ships two equivalent scripts that hit the Open Pulse CHAOSS Metrics API. Every endpoint is a `GET` returning JSON, computed live by the hub on top of the three stores (Neo4j + Oxigraph/SPARQL + OpenSearch). Both scripts read `OPENPULSE_ENDPOINT` (base URL, e.g. `https://openpulse.epfl.ch`) and `OPENPULSE_AUTH` (format `user/password`) from `.env` at the repo root; set `CHAOSS_ENDPOINT` / `CHAOSS_AUTH` only to override them.
 
-Auth is **HTTP Basic, password-only** — the username is ignored, only the password matters. The read-only password `read-me-only` is enough for every query here. So `CHAOSS_AUTH=dev/read-me-only` works.
+Auth is **HTTP Basic, password-only** — the username is ignored, only the token matters. A reader token is enough for every query here.
 
 ```
 .agents/skills/query-chaoss/
@@ -16,6 +16,27 @@ Auth is **HTTP Basic, password-only** — the username is ignored, only the pass
 ```
 
 > Prefer the live API over re-deriving these numbers by hand. The hub already unifies the three stores per metric (e.g. "largest non-zero of OpenSearch / SPARQL / Neo4j") and exposes the exact store queries via `include=traces` — only drop down to `query-neo4j`/`query-sparql`/`query-opensearch` when you need a value the catalogue doesn't compute.
+
+## Identifiers — how this store keys things
+
+CHAOSS takes **owner and repo as separate path segments** — not a URL, not a slug:
+
+```
+/api/v1/metrics/chaoss/repositories/github.com/{owner}/{repo}/metrics
+```
+
+`query.py` normalises the forms people actually type, so all of these work:
+
+```bash
+python .agents/skills/query-chaoss/query.py repo Biohub esm          # canonical
+python .agents/skills/query-chaoss/query.py repo Biohub/esm          # combined slug
+python .agents/skills/query-chaoss/query.py repo https://github.com/Biohub/esm      # full URL
+python .agents/skills/query-chaoss/query.py repo https://github.com/Biohub/esm.git  # .git stripped
+```
+
+Projects are keyed by a **project slug** (`epfl`, `bioeng`, …) — list them with `projects`.
+
+Cross-store: SPARQL and Cypher key on `https://github.com/{owner}/{repo}`; OpenSearch on a clone URL whose `.git` suffix varies; collections on `owner` + `name` columns. See `.agents/SKILLS.md` §12.
 
 ## Run
 
@@ -60,7 +81,28 @@ Output is the API's JSON, pretty-printed. `--raw` prints the body verbatim. Erro
 
 ## Featured dashboard metrics
 
-When building a repo health dashboard, **start here**. These are the headline CHAOSS cards the template targets — grouped by the three API topic buckets. Each row maps the **display name** → **slug**, the **default window**, what to read from the payload, and a **narrative pattern** (replace placeholders with live `value` / `secondary` / `visual` / `examples`).
+The hub tracks **35 CHAOSS-aligned metrics**. A curated **20-metric "featured" subset** surfaces first on the CHAOSS catalogue page and on every repository / project dashboard; the other **15 render under a collapsed "Advanced" section**. This section documents the featured 20 — they are what a dashboard should lead with.
+
+All 35 are computed from the OpenPulse data plane: the RDF/SPARQL graph (Oxigraph), the Neo4j knowledge graph, the OpenSearch/GrimoireLab activity indices, and the git-metadata-extractor (GME). Which stores back a given metric is visible per-metric via `--include traces`.
+
+### The three topics
+
+| Topic | Question it answers | Total | Featured |
+|---|---|---|---|
+| **Community** | Who contributes, how responsive is the project, how healthy is the maintainer base? | 19 | 9 |
+| **Popularity** | How much reach, reuse, and academic impact does the project have? | 3 | **3 (all)** |
+| **Quality** | Is it licensed, documented, tested, and well-structured? | 13 | 8 |
+
+> **"Featured" is not discoverable from the API.** The subset is defined server-side by `_FEATURED_SLUGS` in `chaoss/routes.py`; the catalogue returns all 35 with **no featured flag** on the spec (fields are `slug`, `name`, `category`, `chaoss_topic`, `question`, `description`, `chaoss_url`, `is_time_based`). If your UI needs the featured/advanced split, **hardcode the 20 slugs below** and treat everything else as Advanced — and re-check this list when the hub version changes, since a metric graduates to featured whenever the product decides to surface it. Verified against the live catalogue on 2026-07-21: all 20 exist, categories match, exactly 15 remain.
+
+The **Advanced 15**, for completeness — same API, same call, just not surfaced first:
+
+| Topic | Slugs |
+|---|---|
+| Community (10) | `burstiness`, `cr_duration`, `inactive_contributors`, `issue_resolution`, `issues_active`, `issues_closed`, `issues_new`, `occasional_contributors`, `pr_time_to_close`, `project_demographics` |
+| Quality (5) | `bot_activity`, `code_lines`, `cr_accepted`, `cr_declined`, `self_merge` |
+
+Each row below maps the **display name** → **slug**, the **default window**, what to read from the payload, and a **narrative pattern** (replace placeholders with live `value` / `secondary` / `visual` / `examples`).
 
 Fetch the whole set in one call (default window 365 unless you re-query individual slugs with `--window`):
 
@@ -122,6 +164,24 @@ For richer cards (sparklines, contributor bars, doc-signal checklist), add `--in
 | all-time / snapshot | omit or `3650` (metrics with `is_time_based: false` ignore the window) |
 
 Re-fetch individual slugs when the dashboard needs mixed windows (e.g. `closure_ratio --window 30` alongside `contributors --window 365`).
+
+**Which featured metrics actually respond to `--window`** (`is_time_based: true`) — passing a window to the others is harmless but changes nothing:
+
+| | Windowed | Snapshot (window ignored) |
+|---|---|---|
+| **Community** | `contributors`, `committers`, `new_contributors`, `activity_dates`, `absence_factor`, `first_response`, `issue_response_time`, `closure_ratio` | `org_diversity` |
+| **Popularity** | — | `project_popularity`, `technical_fork`, `academic_impact` |
+| **Quality** | `cr_reviews` | `licenses_declared`, `license_coverage`, `programming_languages`, `docs_discoverability`, `release_frequency`, `test_coverage`, `upstream_dependencies` |
+
+So Popularity is entirely snapshot-based, and Quality is snapshot-based apart from `cr_reviews` — a "last 30 days" toggle on a dashboard should visibly apply to Community cards only, or users will assume the others updated too.
+
+**Window bounds and snapping (verified 2026-07-21).** The API accepts **7–3650** days (default 365); outside that it's a hard `422`, not a clamp. Inside the range the value snaps to the **nearest** bucket — 30, 90, 180, 365, 730, 1825, 3650 — with ties rounding **down**, and the response echoes the effective value in `window_days`:
+
+| requested | 7 | 45 | 60 | 100 | 400 | 500 | 600 | 1000 | 3000 |
+|---|---|---|---|---|---|---|---|---|---|
+| **effective** | 30 | 30 | 30 | 90 | 365 | 365 | 730 | 730 | 3650 |
+
+Note it snaps **down as readily as up** (`400 → 365`, `500 → 365`, `1000 → 730`), so a "last 500 days" label over 365 days of data would be wrong in the user's favour. **Always read `window_days` back** and label the card with that, never with the number you requested. `query.py` rejects out-of-range values locally and warns when your value will be snapped.
 
 ### Rendering hints (`visual` block)
 
@@ -211,9 +271,34 @@ A **single repo metric** carries the spec fields (`slug`, `name`, `category`, `c
 
 A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggregate` block: `{rule: "sum"|…, n_repos, n_with_value, sum, mean, min, max, value, …}`. **`n_with_value`** tells you how many member repos actually had data — lean on it, since distinct-people counts carry an `approx` flag.
 
-## Live state (verified 2026-06-10)
+## Live state (verified 2026-07-22)
 
-- The hub serves the **2026-05 snapshot**. SPARQL traces in `--include traces` query `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid>` (see `query-sparql` named-graph convention). The newest signals (`test_coverage`, `release_frequency`) and the issue/PR-based metrics (`first_response`, `cr_*`, `issues_*`) read `"—"` for most repos until a fresh re-extraction lands — **expect them sparse**.
+### GitHub trackers landed — PR metrics now populate
+
+GrimoireLab gained three GitHub backends (`github:issue`, `github:pull`, `github:repo` → the `github_issues` / `github_pull_requests` / `github_repositories` indices; see `query-opensearch`). The **PR-fed metrics came alive** as a result. Measured on `Biohub/esm`, 2026-07-21 → 2026-07-22:
+
+| Metric | before | now |
+|---|---|---|
+| `closure_ratio` | `—` | **95%** |
+| `cr_reviews` | `—` | **11** |
+| `cr_accepted` | 0 | **83** |
+| `cr_declined` | 0 | **21** |
+| `self_merge` | `—` | **65%** |
+| `cr_duration` / `pr_time_to_close` | `—` | **0.0 d** |
+
+**Issue-fed metrics are still empty for that repo** (`first_response`, `issue_response_time`, `issue_resolution`, `issues_*`) — not because the metrics are broken, but because the **issue backend covers only 242 repos** and this one isn't among them, despite having 75 open issues on GitHub. PRs cover 186 repos, the repo tracker 4,554. So an empty issue metric is a **coverage gap, not a zero**; confirm against `github_issues` before reporting "no issue activity".
+
+### Popularity metrics lag the freshest source
+
+`project_popularity` and `technical_fork` still read stars/forks from SPARQL and are **stale by a wide margin**. For `Biohub/esm` on 2026-07-22, CHAOSS reported **2343 stars / 289 forks** while the new `github_repositories` tracker reported **2861 / 366 — exactly matching the live GitHub API**. Until the metric is rewired, prefer the tracker for current popularity figures and treat these two cards as historical.
+
+### `0.0 d` means "under an hour", not "instantly"
+
+`cr_duration` and `pr_time_to_close` are **medians in days, rendered to one decimal**. On `Biohub/esm` the median merge time is 0.023 days (~33 minutes), so it displays as `0.0 d` even though the mean is 8.9 days (p95 = 7.9). Don't read `0.0 d` as missing data or as instant merges — render sub-day medians in hours, or the card misleads.
+
+### Snapshot / auth notes
+
+- SPARQL traces in `--include traces` query `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid>` (see `query-sparql` named-graph convention). `test_coverage` remains sparse.
 - Repos are **GitHub-only**: `repo <owner> <repo>` → `/repositories/github.com/...`.
 - Projects are discipline/topic buckets of repos. **The set and count change over time, so always read it from `projects` — never hardcode a number.** At time of writing the largest are `info-eng` (~109 repos), `bioeng` (~95), `stats` (~63), with domain-relevant ones like `protein_ai_ecosystem` (~26), `bio` (~42), `chem` (~10). Use the exact `project` slug returned by `projects` (e.g. `protein_ai_ecosystem`, not `protein-ai`). `project-repos <project>` returns the project header plus both a `metrics[]` summary and a `repositories[]` list.
 - A browsable UI to explore first: `https://openpulse.epfl.ch/chaoss` (same auth).
@@ -225,6 +310,8 @@ A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggreg
 - **Treat `value` as a string.** For numbers, parse `value` or read the `visual` block — and remember `"—"` ≠ 0.
 - **Use the featured table** when the user names a dashboard card ("closure ratio", "bus factor", "doc discoverability") — map to the slug, pick the window, format with the narrative pattern.
 - **Say when data is missing or approximate** — byte-level language shares, open PR counts, clone/download stats, and contribution-type breakdowns are gaps; don't invent them.
+- **An empty metric means "not crawled here", not "zero".** Coverage varies per repo: where a metric's source hasn't been ingested (no GrimoireLab enrichment, no GME extraction) the API returns a neutral/empty result rather than failing, so a card can read `—` while the underlying activity exists. Never render `—` as `0`, and don't conclude a project lacks reviews or tests from an empty value alone.
+- **`chaoss_url` on each spec links the upstream CHAOSS definition** — cite it rather than paraphrasing what a metric means.
 - This API is **read-only and GET-only**; there is nothing to mutate. The read password suffices.
 - `--window` snaps server-side — passing 400 lands on 365; don't expect arbitrary windows.
 - Project aggregates are cached 30 min; add `--refresh` only when you need a recompute, since it's slower.

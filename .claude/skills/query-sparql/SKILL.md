@@ -1,17 +1,36 @@
 ---
 name: query-sparql
-description: Run a SPARQL query against the Open Pulse Oxigraph triplestore via its Caddy HTTP-Basic proxy. TRIGGER when the user asks anything that requires reading from the RDF metadata graph — listing named graphs, counting triples, exploring a vocabulary/predicate, or running a SPARQL SELECT/ASK/CONSTRUCT they paste in. SKIP for graph property questions (use query-neo4j) or log/index questions (use query-opensearch).
+description: Run a SPARQL query against the Open Pulse Oxigraph triplestore via the hub HTTPS gateway. TRIGGER when the user asks anything that requires reading from the RDF metadata graph — listing named graphs, counting triples, exploring a vocabulary/predicate, or running a SPARQL SELECT/ASK/CONSTRUCT they paste in. SKIP for graph property questions (use query-neo4j) or log/index questions (use query-opensearch).
 ---
 
-# Query SPARQL (Oxigraph behind Caddy)
+# Query SPARQL (Oxigraph via the hub gateway)
 
-This skill ships two equivalent scripts that talk to `/query` on the SPARQL endpoint. Both read `SPARQL_ENDPOINT` and `SPARQL_AUTH` (format `user/password`) from `.env`. They deliberately do not support `/update` — use curl directly if you need to mutate.
+This skill ships two equivalent scripts that POST to `{OPENPULSE_ENDPOINT}/sparql/query` over HTTPS — the **standards-compliant W3C SPARQL endpoint** (content negotiation works, so `--accept turtle/csv/xml` behaves; also usable from YASGUI, rdflib, SPARQLWrapper, federation). Both read `OPENPULSE_ENDPOINT` and `OPENPULSE_AUTH` (format `user/password`; the username is ignored — the token is what matters) from `.env`; set `SPARQL_ENDPOINT` / `SPARQL_AUTH` only to override the derived values. They deliberately do not support `/update` — use curl directly if you need to mutate.
+
+The hub also exposes a JSON convenience path — `POST {OPENPULSE_ENDPOINT}/api/databases/sparql/query` with body `{"query": "…"}` returning `{columns, rows, row_count}` (same shape as the Cypher/OpenSearch gateways) — handy for app code that wants one uniform response shape across stores.
 
 ```
 .claude/skills/query-sparql/
 ├── query.py       # Python 3, stdlib only
 └── query.mjs      # Node 18+, built-in fetch
 ```
+
+## Identifiers — how this store keys things
+
+Subjects are **absolute IRIs**, never bare slugs. Match the full URL literal or you get zero rows (no error).
+
+| Entity | IRI form | Example |
+|---|---|---|
+| Repository | `https://github.com/{owner}/{repo}` | `<https://github.com/Biohub/esm>` |
+| Person (GitHub) | `https://github.com/{login}` | `<https://github.com/santiag0m>` |
+| Person (ORCID) | `https://orcid.org/{id}` | `<https://orcid.org/0000-0002-0883-1373>` |
+| Institution | `https://ror.org/{id}` | `<https://ror.org/014nxkk19>` |
+| Article | `https://doi.org/{doi}` | `<https://doi.org/10.1101/…>` |
+| Named graph | `https://open-pulse.epfl.ch/graph/{YYYY-MM}/{rule-based\|hybrid}` | see below |
+
+No `.git` suffix on repo subjects. Contribution authors can be **either** a GitHub URL or an ORCID (occasionally an Infoscience item URL), so don't assume one shape when grouping people.
+
+Cross-store: Cypher uses the same repo URL in `full_name`; CHAOSS and collections take `owner` + `repo` separately; OpenSearch uses a *clone* URL whose `.git` suffix varies. See `.claude/SKILLS.md` §12.
 
 ## Run
 
@@ -36,7 +55,7 @@ node .claude/skills/query-sparql/query.mjs -f query.rq
 
 For `SELECT` the script flattens the SPARQL JSON Results envelope to a plain `[{var: value}, ...]` array. For `ASK`, `CONSTRUCT`, `DESCRIBE`, or any non-`json` accept, the response is passed through.
 
-## Default graph vs named graphs (verified 2026-06-10)
+## Default graph vs named graphs (verified 2026-07-21)
 
 Oxigraph holds production RDF in **named graphs**, but the hub also configures a **default graph** so plain SPARQL (no `GRAPH` clause) works.
 
@@ -44,8 +63,8 @@ Oxigraph holds production RDF in **named graphs**, but the hub also configures a
 
 | Mode | Syntax | When to use |
 |---|---|---|
-| **Default graph** | `{ ?s ?p ?o }` — no `GRAPH` wrapper | Most ad-hoc queries. Oxigraph resolves this to the **current production snapshot** (~2.45M triples today, same data as `…/graph/2026-05/hybrid`). |
-| **Named graph** | `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { … }` | Pin a specific snapshot, query utility graphs, or compare graphs side by side. Required for `_backup/…`, `_links/identity`, or in-progress `2026-06/hybrid`. |
+| **Default graph** | `{ ?s ?p ?o }` — no `GRAPH` wrapper | Most ad-hoc queries. This is the **cumulative** production graph (~3.34M triples as of 2026-07-21) — the accumulated result of the work so far, **not** a copy of any one monthly snapshot. |
+| **Named graph** | `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { … }` | Pin a specific month, choose a specific derivation method (see below), compare snapshots side by side, or reach `_backup/…` / `_links/identity`. |
 
 ```sparql
 # Default graph mode — fine for everyday repo/metadata lookups
@@ -65,23 +84,82 @@ Default mode does **not** union every named graph — backups and in-progress sn
 
 ### Named-graph IRI pattern
 
-| Kind | Pattern | Example |
+Named graphs are **monthly snapshots**, and each month can exist in two variants that differ by *how the triples were derived*:
+
+| Variant | Pattern | How it was built |
 |---|---|---|
-| **Production snapshot** | `https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid` | `…/graph/2026-05/hybrid` |
-| **Utility / backup** | `https://open-pulse.epfl.ch/graph/_…` | `…/_backup/2026-05-hybrid-prenorm`, `…/_links/identity` |
+| **rule-based** | `…/graph/{YYYY-MM}/rule-based` | Deterministic extraction only — **no agentic inference**. Everything traces back to an explicit rule, so it's the conservative, reproducible view. |
+| **hybrid** | `…/graph/{YYYY-MM}/hybrid` | Rule-based output **plus agent-applied fixes** — agents correct and enrich what the rules got wrong or missed. Higher coverage and quality, at the cost of a non-deterministic step. |
+| **Utility / backup** | `…/graph/_…` | Not a snapshot: `…/_backup/2026-05-hybrid-prenorm`, `…/_links/identity`. |
 
-Pipeline `sparql_upload` (op-extractor) lands triples in the named graph for that month; the hub also promotes the current snapshot into the default graph. CHAOSS SPARQL traces may use either form.
+**Choosing a variant.** Use `hybrid` when you want the best available metadata (it's what production is built from). Use `rule-based` when you need provenance you can defend — reproducibility, auditing, or measuring what the agents actually changed. Diffing the two for the same month is the way to quantify the agents' contribution:
 
-### Current named graphs (live)
+```sparql
+# What did the agents add for this subject? (verified 2026-07-21: 1,360 triples)
+SELECT ?p ?o WHERE {
+  GRAPH <https://open-pulse.epfl.ch/graph/2026-06/hybrid> { <https://ror.org/05a28rw58> ?p ?o }
+  FILTER NOT EXISTS {
+    GRAPH <https://open-pulse.epfl.ch/graph/2026-06/rule-based> { <https://ror.org/05a28rw58> ?p ?o }
+  }
+}
+```
 
-| Named graph | Triples | Role |
-|---|---|---|
-| `https://open-pulse.epfl.ch/graph/2026-05/hybrid` | ~2.45M | **Current production snapshot** — also what default-graph queries see |
-| `https://open-pulse.epfl.ch/graph/_backup/2026-05-hybrid-prenorm` | ~2.12M | Pre-normalisation backup — named graph only |
-| `https://open-pulse.epfl.ch/graph/2026-06/hybrid` | ~329k | In-progress next snapshot — named graph only |
-| `https://open-pulse.epfl.ch/graph/_links/identity` | ~204 | Cross-store identity links — named graph only |
+Agent-added triples often carry a **confidence score** — e.g. `gme:ror_match_confidence 0.94` appears in `hybrid` but not `rule-based`. Treat such predicates as inferred, not observed, and surface the confidence if you display the value downstream.
+
+Two traps when diffing:
+
+- **Pick a subject that exists in both graphs**, or the diff is vacuously empty. `Biohub/esm` has 112 triples in `2026-06/rule-based` and **0** in `2026-06/hybrid`, so diffing it returns nothing — which reads like "the agents changed nothing" when it actually means "this subject hasn't been processed into hybrid yet".
+- **Variants are not ordered by size.** A rule-based graph can dwarf its hybrid sibling (2026-06: 7.66M vs 440k) because they come from different pipeline stages and a month's hybrid build may still be filling. Bigger ≠ newer ≠ better.
+
+Pipeline `sparql_upload` (op-extractor) lands triples in the named graph for that month; the default graph accumulates production data across months. CHAOSS SPARQL traces may use either form.
+
+### Current named graphs (verified 2026-07-21)
+
+| Named graph | Variant | Triples | Role |
+|---|---|---|---|
+| `…/graph/2026-06/rule-based` | rule-based | ~7.66M | 2026-06 deterministic build (no agent inference) |
+| `…/graph/2026-05/hybrid` | hybrid | ~2.45M | 2026-05 snapshot, agent-corrected |
+| `…/graph/_backup/2026-05-hybrid-prenorm` | backup | ~2.12M | Pre-normalisation backup of the above |
+| `…/graph/2026-06/hybrid-pre-gme-v3-rc2` | hybrid (pinned) | ~472k | Pre-release GME v3 build |
+| `…/graph/2026-06/hybrid` | hybrid | ~440k | 2026-06 snapshot — in progress, still filling |
+| `…/graph/_links/identity` | utility | ~204 | Cross-store identity links |
+
+(IRIs abbreviated — the prefix is `https://open-pulse.epfl.ch`.)
+
+Two things to keep in mind when reading this table:
+
+- **Not every month has both variants.** `2026-05/rule-based` is part of the naming convention but was **not present in the store on 2026-07-21** — only its `hybrid` sibling was. Never assume a variant exists; run the inventory query below before pinning one, or you'll get silently empty results (a `GRAPH` clause naming a non-existent graph returns zero rows, not an error).
+- **The default graph is cumulative, not a copy.** At ~3.34M triples it matches none of the rows above, because it accumulates across months rather than mirroring the latest snapshot. Query it for "what do we know about X"; query a named graph for "what did month M's pipeline produce, by method V".
 
 Refresh sizes: `python .claude/skills/op-collections/query.py stats` → `sparql.named_graphs`, or the inventory query below.
+
+### Auditing one subject across every graph
+
+Coverage is **uneven per subject** — a repo present in one snapshot may be entirely missing from another. Check before you attribute meaning to an empty result:
+
+```sparql
+SELECT ?g (COUNT(*) AS ?triples) (COUNT(DISTINCT ?p) AS ?predicates) WHERE {
+  GRAPH ?g { <https://github.com/Biohub/esm> ?p ?o }
+} GROUP BY ?g ORDER BY DESC(?triples)
+```
+
+Result for `Biohub/esm` on 2026-07-21 (as subject / as object):
+
+| Graph | subject | predicates | object |
+|---|---|---|---|
+| default (cumulative) | 142 | 50 | 22 |
+| `2026-05/hybrid` | 142 | 50 | 22 |
+| `2026-06/hybrid-pre-gme-v3-rc2` | 130 | 49 | 4 |
+| `2026-06/rule-based` | 112 | 48 | 5 |
+| `_backup/2026-05-hybrid-prenorm` | 48 | 30 | 19 |
+| `2026-06/hybrid` | **0** | — | 0 |
+| `_links/identity` | **0** | — | 0 |
+
+Three things this shows, all worth internalising:
+
+- **The default graph tracks one snapshot per subject, it does not union them.** If it unioned, this repo would show 432 subject triples; it shows 142 — the `2026-05/hybrid` figure. Yet the default graph is ~3.34M triples overall versus that snapshot's ~2.45M, so the *store* is cumulative while any *given* subject resolves to one contributing snapshot. Don't reason about the default graph from a single subject, or vice versa.
+- **Identical counts don't mean identical content.** Default and `2026-05/hybrid` both hold 142 triples here, yet 18 differ in each direction — every one of them a `gme:releases` value whose opaque hash was regenerated. Non-release triples: **zero** differences. Diff on values, not counts.
+- **Absence is a pipeline state, not a fact about the repo.** `2026-06/hybrid` is still filling, so this repo simply hasn't landed there yet; `_links/identity` only ever holds cross-store links. Neither means "unknown repo".
 
 ## Prefixes used in this graph
 
@@ -131,7 +209,9 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 
 | Goal | SPARQL |
 |---|---|
-| Named graphs + sizes | `SELECT ?g (COUNT(*) AS ?n) WHERE { GRAPH ?g { ?s ?p ?o } } GROUP BY ?g ORDER BY DESC(?n)` |
+| Named graphs + sizes (**run this before pinning a graph**) | `SELECT ?g (COUNT(*) AS ?n) WHERE { GRAPH ?g { ?s ?p ?o } } GROUP BY ?g ORDER BY DESC(?n)` |
+| Does a subject exist in a given variant? | `ASK { GRAPH <…/graph/2026-06/hybrid> { <subject> ?p ?o } }` |
+| What did the agents add for a subject? | `SELECT ?p ?o WHERE { GRAPH <…/{M}/hybrid> { <s> ?p ?o } FILTER NOT EXISTS { GRAPH <…/{M}/rule-based> { <s> ?p ?o } } }` |
 | Triple count (default graph) | `SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }` |
 | Triple count (named graph) | `SELECT (COUNT(*) AS ?n) WHERE { GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid> { ?s ?p ?o } }` |
 | Predicates on a repo | `SELECT DISTINCT ?p WHERE { <https://github.com/biopython/biopython> ?p ?o }` |
@@ -139,6 +219,14 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 
 ## Gotchas learned the hard way
 
+- **Scalar predicates are often MULTI-VALUED — this silently produces cartesian products.** Repo metadata accumulates one value per crawl rather than being overwritten, so a repo can carry several `op:githubRepoStars`, `gme:size_kb`, `gme:pushed_at`, `gme:open_issues_count` values *within a single named graph*. A naive `SELECT ?stars ?forks WHERE { ?r op:githubRepoStars ?stars ; op:githubRepoForks ?forks }` on `Biohub/esm` returns **8 rows** (2 stars × 2 forks × 2 dates), none flagged as stale. Defend with aggregation, and never assume one row per repo:
+  ```sparql
+  SELECT ?r (MAX(?s) AS ?stars) (MAX(?f) AS ?forks) WHERE {
+    ?r op:githubRepoStars ?s ; op:githubRepoForks ?f .
+  } GROUP BY ?r
+  ```
+  `MAX` is a heuristic for "most recent" on monotonic counters like stars — it is wrong for values that can decrease. When you need one coherent snapshot, query a single named graph instead: `2026-06/rule-based` carried clean single values where `2026-05/hybrid` did not.
+- **Cross-store values disagree, and the freshest source is not obvious.** For `Biohub/esm` on 2026-07-21: SPARQL default graph gave 2343 *and* 2712 stars, `2026-06/rule-based` gave 2746, the DuckDB collection gave 2617, CHAOSS reported 2343 — while GitHub's live API said **2858**. Every store lags by a different amount. Never present a store value as the current figure without dating it.
 - **VALUES over hundreds of URIs times out (504).** For memberships, ORCID bridge, and person-publications, **fetch the whole (small) table once and join in Python** instead of binding a big `VALUES` list. Per-repo `VALUES` of ~25 URIs is fine.
 - **IRI-unsafe author logins.** Bot handles like `github-actions[bot]` contain `[]` that break IRI parsing inside `VALUES`. Percent-encode them before interpolating (`[`→`%5B`, `]`→`%5D`).
 - **Most affiliations hang off ORCIDs, not GitHub URLs.** A GitHub-only contributor resolves an institution only if an ORCID bridges to their GitHub *and* that ORCID has a membership. Of typical external (non-EPFL) contributors, few do — expect partial coverage and consider the GitHub-profile `company` as a soft fallback.
@@ -148,7 +236,7 @@ institution is `<https://ror.org/…>`. Match the full URL literal.
 
 ## Conventions
 
-- Always include `LIMIT` on exploratory queries. **Default graph mode** (`{ … }` without `GRAPH`) is fine for the current production snapshot; use an explicit `GRAPH <https://open-pulse.epfl.ch/graph/{YYYY-MM}/hybrid>` when you need a specific snapshot or a non-default graph.
-- Updates require `SPARQL_AUTH` admin role and are destructive — never run them unless the user explicitly asks. Use curl, not these scripts.
+- Always include `LIMIT` on exploratory queries. **Default graph mode** (`{ … }` without `GRAPH`) is the cumulative production view and the right default; use an explicit `GRAPH <…/graph/{YYYY-MM}/{rule-based|hybrid}>` when you need a specific month, a specific derivation method, or a non-default graph.
+- Updates go to `{OPENPULSE_ENDPOINT}/sparql/update`, require an admin token, and are destructive — never run them unless the user explicitly asks. Use curl, not these scripts.
 - Oxigraph default response is SPARQL XML; the scripts always set `Accept` explicitly.
 - A 504 from the proxy means the query timed out — reduce the result set, tighten the pattern, or switch to fetch-and-join.

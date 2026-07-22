@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
-"""Run a Cypher query against the Open Pulse Neo4j HTTP transactional API.
+"""Run a Cypher query against the Open Pulse hub gateway (HTTPS).
 
-Reads NEO4J_HTTP_ENDPOINT and NEO4J_AUTH (format: user/password) from
-.env at the repo root, or from the environment. Prints the rows as JSON
-to stdout.
+Reads OPENPULSE_ENDPOINT and OPENPULSE_AUTH (format: user/password;
+username ignored, the token is what matters) from .env at the repo root,
+or from the environment, and posts to
+{OPENPULSE_ENDPOINT}/api/databases/cypher/query. Prints the rows as
+JSON to stdout.
+
+Reader tokens get a read-only Neo4j transaction — any write clause
+(CREATE/MERGE/DELETE/SET) returns 403.
 
 Usage:
     python query.py 'MATCH (n) RETURN labels(n)[0] AS label, count(*) AS n'
@@ -16,6 +21,8 @@ import argparse
 import base64
 import json
 import os
+import re
+import socket
 import sys
 import urllib.error
 import urllib.request
@@ -45,18 +52,38 @@ def read_query(args: argparse.Namespace) -> str:
     return args.query
 
 
+# Identifier properties hold FULL GitHub URLs, not bare slugs. Matching
+# `full_name:'owner/repo'` is the single most common way to get a silent
+# empty result, so warn before the query is sent.
+_URL_PROPS = re.compile(
+    r"\b(full_name|login)\b\s*:\s*(['\"])(?P<value>[^'\"]*)\2"
+)
+
+
+def warn_bare_identifiers(cypher: str) -> None:
+    for m in _URL_PROPS.finditer(cypher):
+        value = m.group("value")
+        if value and not value.startswith(("http://", "https://")):
+            print(
+                f"warning: {m.group(1)} matched against {value!r}, which is not a full URL — "
+                f"identifiers in this graph are full GitHub URLs "
+                f"(try 'https://github.com/{value.lstrip('/')}'). "
+                "This query will likely return zero rows.",
+                file=sys.stderr,
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("query", nargs="?", help="Cypher query, or '-' for stdin")
     parser.add_argument("-f", "--file", help="read query from file")
-    parser.add_argument("--database", default="neo4j", help="target database (default: neo4j)")
     args = parser.parse_args()
 
     load_dotenv()
-    endpoint = os.environ.get("NEO4J_HTTP_ENDPOINT")
-    auth = os.environ.get("NEO4J_AUTH")
+    endpoint = os.environ.get("OPENPULSE_ENDPOINT")
+    auth = os.environ.get("OPENPULSE_AUTH")
     if not endpoint or not auth or "/" not in auth:
-        print("error: NEO4J_HTTP_ENDPOINT and NEO4J_AUTH (user/password) must be set", file=sys.stderr)
+        print("error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set", file=sys.stderr)
         return 2
 
     user, _, password = auth.partition("/")
@@ -64,10 +91,11 @@ def main() -> int:
     if not cypher:
         print("error: empty query", file=sys.stderr)
         return 2
+    warn_bare_identifiers(cypher)
 
-    body = json.dumps({"statements": [{"statement": cypher}]}).encode()
+    body = json.dumps({"query": cypher}).encode()
     token = base64.b64encode(f"{user}:{password}".encode()).decode()
-    url = f"{endpoint.rstrip('/')}/db/{args.database}/tx/commit"
+    url = f"{endpoint.rstrip('/')}/api/databases/cypher/query"
     req = urllib.request.Request(
         url,
         data=body,
@@ -80,7 +108,7 @@ def main() -> int:
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=60) as resp:
             payload = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         print(f"http {e.code}: {e.read().decode(errors='replace')}", file=sys.stderr)
@@ -88,13 +116,11 @@ def main() -> int:
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
         return 1
-
-    if payload.get("errors"):
-        print(json.dumps(payload["errors"], indent=2), file=sys.stderr)
+    except (TimeoutError, socket.timeout):
+        print("network error: request timed out", file=sys.stderr)
         return 1
 
-    result = payload["results"][0]
-    rows = [dict(zip(result["columns"], r["row"])) for r in result["data"]]
+    rows = [dict(zip(payload["columns"], r)) for r in payload["rows"]]
     json.dump(rows, sys.stdout, indent=2, default=str)
     sys.stdout.write("\n")
     return 0

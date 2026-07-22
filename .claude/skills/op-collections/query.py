@@ -38,6 +38,7 @@ import argparse
 import base64
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -85,6 +86,9 @@ def http_get(path: str, params: dict[str, str] | None, raw: bool) -> int:
         return 1
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
+        return 1
+    except (TimeoutError, socket.timeout):
+        print("network error: request timed out", file=sys.stderr)
         return 1
     if raw:
         sys.stdout.buffer.write(body)

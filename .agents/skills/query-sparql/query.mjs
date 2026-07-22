@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Send a SPARQL query to the Open Pulse Oxigraph endpoint (via Caddy).
+// Send a SPARQL query to the Open Pulse hub gateway (HTTPS).
 //
-// Reads SPARQL_ENDPOINT and SPARQL_AUTH (format: user/password) from
-// the nearest .env walking up, or from process.env.
+// Reads OPENPULSE_ENDPOINT and OPENPULSE_AUTH (format: user/password;
+// username ignored) from the nearest .env walking up, or from process.env,
+// and posts to {OPENPULSE_ENDPOINT}/sparql/query. Set SPARQL_ENDPOINT /
+// SPARQL_AUTH to override the derived values.
 //
 // Usage:
 //   node query.mjs 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }'
@@ -74,10 +76,11 @@ async function main() {
 	const argv = process.argv.slice(2);
 	await loadDotenv();
 
-	const endpoint = process.env.SPARQL_ENDPOINT;
-	const auth = process.env.SPARQL_AUTH;
+	const base = process.env.OPENPULSE_ENDPOINT;
+	const endpoint = process.env.SPARQL_ENDPOINT || (base && `${base.replace(/\/$/, '')}/sparql`);
+	const auth = process.env.SPARQL_AUTH || process.env.OPENPULSE_AUTH;
 	if (!endpoint || !auth || !auth.includes('/')) {
-		console.error('error: SPARQL_ENDPOINT and SPARQL_AUTH (user/password) must be set');
+		console.error('error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set');
 		process.exit(2);
 	}
 

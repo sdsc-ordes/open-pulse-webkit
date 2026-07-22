@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Send a SPARQL query to the Open Pulse Oxigraph endpoint (via Caddy).
+"""Send a SPARQL query to the Open Pulse hub gateway (HTTPS).
 
-Reads SPARQL_ENDPOINT and SPARQL_AUTH (format: user/password) from .env
-at the repo root, or from the environment.
+Reads OPENPULSE_ENDPOINT and OPENPULSE_AUTH (format: user/password;
+username ignored, the token is what matters) from .env at the repo root,
+or from the environment, and posts to {OPENPULSE_ENDPOINT}/sparql/query.
+Set SPARQL_ENDPOINT / SPARQL_AUTH to override the derived values.
 
 Usage:
     python query.py 'SELECT (COUNT(*) AS ?n) WHERE { ?s ?p ?o }'
@@ -23,6 +25,7 @@ import argparse
 import base64
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -68,10 +71,11 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv()
-    endpoint = os.environ.get("SPARQL_ENDPOINT")
-    auth = os.environ.get("SPARQL_AUTH")
+    base = os.environ.get("OPENPULSE_ENDPOINT")
+    endpoint = os.environ.get("SPARQL_ENDPOINT") or (base and f"{base.rstrip('/')}/sparql")
+    auth = os.environ.get("SPARQL_AUTH") or os.environ.get("OPENPULSE_AUTH")
     if not endpoint or not auth or "/" not in auth:
-        print("error: SPARQL_ENDPOINT and SPARQL_AUTH (user/password) must be set", file=sys.stderr)
+        print("error: OPENPULSE_ENDPOINT and OPENPULSE_AUTH (user/password) must be set", file=sys.stderr)
         return 2
 
     user, _, password = auth.partition("/")
@@ -104,6 +108,9 @@ def main() -> int:
         return 1
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
+        return 1
+    except (TimeoutError, socket.timeout):
+        print("network error: request timed out", file=sys.stderr)
         return 1
 
     if args.raw or args.accept != "json":

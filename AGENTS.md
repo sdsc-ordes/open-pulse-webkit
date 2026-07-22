@@ -121,11 +121,13 @@ open-pulse-webkit/
 
 ### Data sources (Open Pulse platform)
 
-| Store | What's in it | How to query |
-|---|---|---|
-| **Neo4j** (`:7503` HTTP, `:7504` Bolt) | Property graph: repositories, contributors, commits, organisations, PRs | Skill `query-neo4j` |
-| **Oxigraph / SPARQL** (`:7502`, Caddy basic-auth) | RDF metadata (~2.45M triples); default-graph or named-graph (`…/graph/{YYYY-MM}/hybrid`) queries | Skill `query-sparql` |
-| **OpenSearch** (`:9200`, self-signed TLS) | GrimoireLab-enriched docs | Skill `query-opensearch` |
+All three stores are reached through **one HTTPS hub gateway** (`OPENPULSE_ENDPOINT`, e.g. `https://openpulse.epfl.ch`) with a single reader token (`OPENPULSE_AUTH`). The raw store ports are plain HTTP / self-signed and must not be used.
+
+| Store | What's in it | Gateway path | How to query |
+|---|---|---|---|
+| **Neo4j** | Property graph: repositories, contributors, organisations, social edges | `POST /api/databases/cypher/query` | Skill `query-neo4j` |
+| **Oxigraph / SPARQL** | RDF metadata; cumulative default graph (~3.3M triples) plus monthly snapshots `…/graph/{YYYY-MM}/{rule-based\|hybrid}` | `POST /sparql/query` | Skill `query-sparql` |
+| **OpenSearch** | GrimoireLab-enriched commit docs | `POST /api/databases/opensearch/query` (SQL or DSL) | Skill `query-opensearch` |
 
 There are also higher-level hub skills (`op-collections`, `op-search`, `query-chaoss`, `op-crawler`, `op-extractor`). See `.agents/SKILLS.md` and each skill's `SKILL.md`.
 

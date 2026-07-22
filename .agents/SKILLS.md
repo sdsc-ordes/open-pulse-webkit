@@ -173,3 +173,57 @@ A brand is delivered to agents as a skill directory, not as app code — swappin
 3. **State the ground truth.** Name the authoritative source (a Figma file, a brand PDF, a production site) and its date, so future edits know what wins a dispute. A delta theme instead names its base skill and lists its deliberate deviations (see `openpulse-dark-theme` §1.2).
 4. **Point the app at it**: replace the token values in your global stylesheet's `:root` (and your utility framework's theme config, if any) with the new skill's `assets/tokens.css`. Because the app only uses contract names, this is a one-file change — never rename tokens per-brand in app code.
 5. **Activate it**: update the *Active design skill* line in `AGENTS.md` → *Design system*, and run `node tools/sync-agents.mjs`.
+
+---
+
+## 12. Look up one repository across every store
+
+`tools/repo-probe.py` queries all six **read** endpoints for a single GitHub repo and prints what each one knows — the fastest way to check connectivity, see coverage gaps, and spot cross-store disagreement. It's also a working reference for the server-side proxy a browser app needs (credentials stay on the host).
+
+```bash
+python tools/repo-probe.py Biohub/esm            # all six stores
+python tools/repo-probe.py Biohub/esm --github   # plus live GitHub for comparison
+```
+
+Crawler and extractor are deliberately excluded — they're pipeline *control* APIs, not repo-lookup surfaces.
+
+### The six calls, individually
+
+Each is a single authenticated HTTPS request to `$OPENPULSE_ENDPOINT` (Basic auth, username ignored, password = reader token). Verified against `Biohub/esm` on 2026-07-21.
+
+| # | Store | Call | Answers |
+|---|---|---|---|
+| 1 | SPARQL | `POST /sparql/query` | stars, forks, language, license, created date, contributions with first-contribution dates, ORCID authors |
+| 2 | Neo4j | `POST /api/databases/cypher/query` | topology — owner org, issue/PR/star/watch edges, dependencies, forks |
+| 3 | OpenSearch | `POST /api/databases/opensearch/query` (DSL) | commit-level truth — commit count, distinct authors, first/last commit, churn, top authors |
+| 4 | CHAOSS | `GET /api/v1/metrics/chaoss/repositories/github.com/{owner}/{repo}/metrics` | 35 pre-computed health metrics unified across all three stores |
+| 5 | Collections | `GET /api/hub/c/github_repos/rows?q={owner}/{repo}` | the DuckDB crawl row — raw GitHub API payload plus a contributor list with commit counts |
+| 6 | Semantic search | `POST /api/extractor/v2/indices/github_repos/search` | find-by-meaning; use when you *don't* already know the repo's exact name |
+
+Equivalent one-liners with the skills (see each skill's `SKILL.md` for flags):
+
+```bash
+python .agents/skills/query-sparql/query.py 'PREFIX op: <https://open-pulse.epfl.ch/ontology#>
+  SELECT (MAX(?s) AS ?stars) WHERE { <https://github.com/Biohub/esm> op:githubRepoStars ?s }'
+
+python .agents/skills/query-neo4j/query.py "MATCH (r:Repo {full_name:'https://github.com/Biohub/esm'})-[rel]-(n)
+  RETURN type(rel) AS rel, count(*) AS n ORDER BY n DESC"
+
+python .agents/skills/query-opensearch/query.py --dsl git_demo_enriched \
+  '{"size":0,"query":{"term":{"repo_name":"https://github.com/Biohub/esm"}},
+    "aggs":{"authors":{"cardinality":{"field":"author_uuid"}}}}'
+
+python .agents/skills/query-chaoss/query.py repo Biohub esm
+python .agents/skills/op-collections/query.py rows github_repos --q "Biohub/esm" --size 1
+python .agents/skills/op-search/query.py search github_repos "protein language model" --top-k 3
+```
+
+### Three traps this probe exists to catch
+
+1. **Identifier form differs per store.** SPARQL and Neo4j key on the full URL (`https://github.com/Biohub/esm`); CHAOSS and collections take `owner` + `name` separately; OpenSearch uses `repo_name`, whose `.git` suffix is **not** guaranteed — `biopython` has it, `Biohub/esm` doesn't. The probe resolves OpenSearch aliases with a wildcard before matching, and you should too: an exact match on the wrong form returns `0` with no error.
+2. **A repo can be indexed twice under a pre-rename owner.** `Biohub/esm` and `evolutionaryscale/esm.git` are the same 184 commits; summing them double-counts.
+3. **Missing ≠ zero.** `Biohub/esm` has no `CONTRIBUTES_TO` edges in Neo4j despite 25 commit authors in OpenSearch. Never conclude "no contributors" from one store.
+
+### Reading the numbers
+
+Every store is a **crawl snapshot with its own lag**, so they disagree — by design, but the spread is wide enough to matter. For `Biohub/esm` on 2026-07-21: live GitHub said **2858** stars, SPARQL 2712, collections 2617, CHAOSS 2343. Pick the store that fits the question (CHAOSS for computed health, OpenSearch for commit facts, collections for the raw crawl row), and **date any figure you publish** rather than presenting it as current.
