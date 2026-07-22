@@ -106,11 +106,69 @@ def warn_sql_repo_name(sql: str) -> None:
         warn_repo_name([m.group(1)])
 
 
+# Reader tokens get 403 on SHOW TABLES (needs indices:admin/get), so indices
+# cannot be listed — only probed by name. These are the stems GrimoireLab
+# naming produces, crossed with the hub's suffix conventions.
+DISCOVER_STEMS = [
+    "git", "git-aoc", "git-onion",
+    "github", "github2", "githubql",
+    # GrimoireLab backends use hyphens: github-issue / github-pull / github-repo
+    "github-issue", "github-pull", "github-repo",
+    "github_issue", "github_pull", "github_repo",
+]
+DISCOVER_SUFFIXES = ["", "_enriched", "_raw", "_demo_enriched", "_demo_raw"]
+# Aliases the hub exposes on top of the physical indices — probing the stems
+# above would miss these entirely.
+DISCOVER_ALIASES = [
+    "github_issues", "github_pull_requests", "github_repositories",
+    "git-onion_demo_enriched_all",
+]
+
+
+def discover(post, names) -> int:
+    """Probe candidate index names and report the ones that exist."""
+    if not names:
+        names = []
+        for stem in DISCOVER_STEMS:
+            for suffix in DISCOVER_SUFFIXES:
+                names.append(stem + suffix)
+        names += DISCOVER_ALIASES
+    seen, ordered = set(), []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            ordered.append(n)
+
+    print(f"probing {len(ordered)} candidate index names "
+          f"(SHOW TABLES is admin-only, so this is the only way to enumerate)…\n")
+    found, errors = [], []
+    for name in ordered:
+        result, err = post({"mode": "sql", "query": f"SELECT count(*) FROM `{name}`"}, quiet=True)
+        if err:
+            # Missing index is the expected negative; anything else is notable.
+            if "IndexNotFound" in err or "no such index" in err.lower() or "can't be found" in err.lower():
+                continue
+            errors.append((name, err.strip().replace("\n", " ")[:110]))
+            continue
+        count = result["rows"][0][0] if result.get("rows") else 0
+        found.append((name, count))
+        print(f"  ✓ {name:34s} {count:>12,} docs")
+
+    if errors:
+        print("\n  unexpected errors (not simply 'index missing'):")
+        for name, err in errors:
+            print(f"    ? {name:32s} {err}")
+    print(f"\n{len(found)} indices found")
+    return 0 if found else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("query", nargs="?", help="SQL query or DSL JSON body, or '-' for stdin")
     parser.add_argument("-f", "--file", help="read query from file")
     parser.add_argument("--dsl", metavar="INDEX", help="DSL mode: query is a JSON search body for this index")
+    parser.add_argument("--discover", nargs="*", metavar="INDEX",
+                        help="probe index names and report which exist (no args = built-in candidate list)")
     parser.add_argument("--raw", action="store_true", help="print the gateway response verbatim (incl. `raw` envelope)")
     args = parser.parse_args()
 
@@ -122,6 +180,37 @@ def main() -> int:
         return 2
 
     user, _, password = auth.partition("/")
+    token = base64.b64encode(f"{user}:{password}".encode()).decode()
+    url = f"{endpoint.rstrip('/')}/api/databases/opensearch/query"
+
+    def post(payload, quiet=False):
+        """Returns (result, error_string). Never raises."""
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode(),
+            headers={
+                "Authorization": f"Basic {token}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read()), None
+        except urllib.error.HTTPError as e:
+            msg = f"http {e.code}: {e.read().decode(errors='replace')}"
+        except urllib.error.URLError as e:
+            msg = f"network error: {e.reason}"
+        except (TimeoutError, socket.timeout):
+            msg = "network error: request timed out"
+        if not quiet:
+            print(msg, file=sys.stderr)
+        return None, msg
+
+    if args.discover is not None:
+        return discover(post, args.discover)
+
     query = read_query(args).strip()
     if not query:
         print("error: empty query", file=sys.stderr)
@@ -151,31 +240,8 @@ def main() -> int:
         warn_sql_repo_name(query)
         payload = {"mode": "sql", "query": query}
 
-    body = json.dumps(payload).encode()
-    token = base64.b64encode(f"{user}:{password}".encode()).decode()
-    url = f"{endpoint.rstrip('/')}/api/databases/opensearch/query"
-    req = urllib.request.Request(
-        url,
-        data=body,
-        headers={
-            "Authorization": f"Basic {token}",
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        print(f"http {e.code}: {e.read().decode(errors='replace')}", file=sys.stderr)
-        return 1
-    except urllib.error.URLError as e:
-        print(f"network error: {e.reason}", file=sys.stderr)
-        return 1
-    except (TimeoutError, socket.timeout):
-        print("network error: request timed out", file=sys.stderr)
+    result, err = post(payload)
+    if err:
         return 1
 
     if args.raw:

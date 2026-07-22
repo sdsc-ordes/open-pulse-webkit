@@ -14,7 +14,18 @@ The raw cluster ports (`:9200`, Dashboards `:7508`) are plain HTTP / self-signed
 - **SQL** (scripts' default) — `mode: "sql"`, query is an **OpenSearch SQL plugin** string starting with `SELECT`, `SHOW` or `DESCRIBE`; index names are the `FROM` targets. Good for quick lookups and counts.
 - **DSL** (`--dsl <index>` flag) — `mode: "dsl"`, query is a JSON object `{"index": …, …search body}`. The scripts add the `index` key from the flag. Use this for **aggregations**, filters, `_source` projections — anything SQL can't express. The gateway tabulates simple agg buckets into `columns/rows` and puts the full response envelope in `raw`.
 
-Reader tokens can query freely, but `SHOW TABLES` (403, needs `indices:admin/get`) and `DESCRIBE` (empty result) don't work for readers — discover fields with `SELECT * FROM <index> LIMIT 1` instead, and take index names from the table below. Mutating operations are blocked for readers in both modes.
+Reader tokens can query freely, but `SHOW TABLES` (403, needs `indices:admin/get`) and `DESCRIBE` (empty result) don't work for readers — discover fields with `SELECT * FROM <index> LIMIT 1` instead. Mutating operations are blocked for readers in both modes.
+
+### Finding indices (`--discover`)
+
+Because indices can't be listed, new ones are found by **probing names**. `query.py --discover` does that — with no arguments it sweeps a built-in candidate list (GrimoireLab stems × the hub's `_enriched` / `_raw` / `_demo_*` suffixes); with arguments it probes exactly the names you pass:
+
+```bash
+python .claude/skills/query-opensearch/query.py --discover
+python .claude/skills/query-opensearch/query.py --discover github_issues_enriched github_pulls_enriched
+```
+
+A missing index is the expected negative and is skipped silently; anything else (auth, network, a real server error) is reported separately under *unexpected errors*, so **an outage can never be mistaken for "the index doesn't exist"**. Run this after the pipeline adds a backend — the index table below is a snapshot, not an authority.
 
 ```
 .claude/skills/query-opensearch/
@@ -71,18 +82,66 @@ python .claude/skills/query-opensearch/query.py --raw --dsl git_demo_enriched -f
 node .claude/skills/query-opensearch/query.mjs 'SELECT count(*) FROM git'
 ```
 
-## Live index state (verified 2026-07-21)
+## Live index state (verified 2026-07-22)
 
-Commit (git) data dominates; ingestion is **live**, so counts below are moving
-targets. `github_demo_enriched` now has data too (~21k docs), but Neo4j edges
-(`OPENED_PR`, `OPENED_ISSUE`, …) remain the richer source for social activity.
+Ingestion is **live**, so counts are moving targets. Alongside the commit (git)
+data there are now three **GitHub trackers** (GrimoireLab backends
+`github:issue` / `github:pull` / `github:repo`), each reachable through a
+friendly alias:
 
-| Index | Docs | Use it for |
-|---|---|---|
-| `git_demo_enriched` | ~2.43M | **The one you want** — enriched per-commit docs with the fields below (`git` resolves to the same docs) |
-| `git-aoc_demo_enriched` | ~28.3M | "age of code" enrichment (heavy — always aggregate or LIMIT) |
-| `git_demo_raw` | ~5.4M | Raw commit JSON — only when you truly need it |
-| `github_demo_enriched` | ~21k | GitHub backend enrichment |
+| Index (alias → physical) | Docs | Repos | Use it for |
+|---|---|---|---|
+| `git` → `git_demo_enriched` | ~2.44M | — | **Commits** — enriched per-commit docs (fields below) |
+| `git-aoc_demo_enriched` | ~28.4M | — | "age of code" enrichment (heavy — always aggregate or LIMIT) |
+| `git_demo_raw` | ~5.4M | — | Raw commit JSON — only when you truly need it |
+| `github_issues` → `github_demo_enriched` | ~21k | 242 | **Issues** — 77 fields incl. identity, `closed_at`, assignees |
+| `github_pull_requests` → `github-pull_enriched` | ~10.3k | 186 | **Pull requests** — 85 fields incl. `additions`/`deletions`, `merged`, `code_merge_duration` |
+| `github_repositories` → `github-repo_enriched` | ~10.8k | 4,554 | **Repo snapshots** — `stargazers_count`, `forks_count`, `subscribers_count` |
+| `github_raw`, `github-pull_raw`, `github-repo_raw` | 37.6k / 17.2k / 13.6k | — | Raw backend payloads |
+| `github_enriched` | **0** | — | Empty — do not use |
+
+### The three GitHub trackers
+
+**Identifiers** (same across issues and pulls): `origin` = `tag` = `repository` = the
+full repo URL **without** `.git`; `github_repo` = the bare `owner/repo` slug;
+`url` = the specific issue/PR URL. `github_repositories` has `origin`/`tag`/`url`
+only. There's also a `project` field carrying the GrimoireLab project
+(e.g. `protein-design-tools`) — handy for project-wide rollups.
+
+```bash
+python .claude/skills/query-opensearch/query.py \
+  "SELECT count(*) FROM github_pull_requests WHERE origin = 'https://github.com/Biohub/esm'"
+```
+
+**`github_repositories` stores repeated snapshots, not a time series.** Each
+crawl inserts a new doc even when nothing changed: `Biohub/esm` had **11 docs
+all reading 2861 stars / 366 forks**, several taken minutes apart. So ~10.8k docs
+cover only **4,554 distinct repos**. Never count docs to count repos, and always
+take the newest by `metadata__updated_on` rather than averaging:
+
+```bash
+python .claude/skills/query-opensearch/query.py --dsl github_repositories \
+  '{"size":1,"query":{"term":{"origin":"https://github.com/Biohub/esm"}},
+    "sort":[{"metadata__updated_on":"desc"}],
+    "_source":["stargazers_count","forks_count","subscribers_count","metadata__updated_on"]}'
+```
+
+**This is the freshest star/fork source in the platform.** On 2026-07-22 it
+reported 2861 stars / 366 forks / 40 watchers for `Biohub/esm`, **matching the
+live GitHub API exactly**, while SPARQL held 2712, the DuckDB collection 2617,
+and CHAOSS surfaced 2343. If you need current popularity figures, read them
+here — not from `project_popularity`.
+
+**Coverage is much narrower than for commits.** Issues cover 242 repos and pulls
+186, versus 4,554 in the repo tracker and thousands in `git`. `Biohub/esm` has
+**110 PR docs but zero issue docs**, so an empty issue result means "this repo
+isn't in the issue backend yet", not "no issues" — it has 75 open on GitHub.
+Check coverage before drawing conclusions:
+
+```bash
+python .claude/skills/query-opensearch/query.py --dsl github_issues \
+  '{"size":0,"aggs":{"repos":{"cardinality":{"field":"origin"}}}}'
+```
 
 **What's actually in it:** the index is the GrimoireLab *demo* dataset, which is
 a **mix** — Moodle, dataverse, bioconda, ckan, prometheus — **plus** many of the

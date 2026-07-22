@@ -271,9 +271,34 @@ A **single repo metric** carries the spec fields (`slug`, `name`, `category`, `c
 
 A **project metric** adds `repo_count`, `truncated`, `cached_at`, and an `aggregate` block: `{rule: "sum"|…, n_repos, n_with_value, sum, mean, min, max, value, …}`. **`n_with_value`** tells you how many member repos actually had data — lean on it, since distinct-people counts carry an `approx` flag.
 
-## Live state (verified 2026-06-10)
+## Live state (verified 2026-07-22)
 
-- The hub serves the **2026-05 snapshot**. SPARQL traces in `--include traces` query `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid>` (see `query-sparql` named-graph convention). The newest signals (`test_coverage`, `release_frequency`) and the issue/PR-based metrics (`first_response`, `cr_*`, `issues_*`) read `"—"` for most repos until a fresh re-extraction lands — **expect them sparse**.
+### GitHub trackers landed — PR metrics now populate
+
+GrimoireLab gained three GitHub backends (`github:issue`, `github:pull`, `github:repo` → the `github_issues` / `github_pull_requests` / `github_repositories` indices; see `query-opensearch`). The **PR-fed metrics came alive** as a result. Measured on `Biohub/esm`, 2026-07-21 → 2026-07-22:
+
+| Metric | before | now |
+|---|---|---|
+| `closure_ratio` | `—` | **95%** |
+| `cr_reviews` | `—` | **11** |
+| `cr_accepted` | 0 | **83** |
+| `cr_declined` | 0 | **21** |
+| `self_merge` | `—` | **65%** |
+| `cr_duration` / `pr_time_to_close` | `—` | **0.0 d** |
+
+**Issue-fed metrics are still empty for that repo** (`first_response`, `issue_response_time`, `issue_resolution`, `issues_*`) — not because the metrics are broken, but because the **issue backend covers only 242 repos** and this one isn't among them, despite having 75 open issues on GitHub. PRs cover 186 repos, the repo tracker 4,554. So an empty issue metric is a **coverage gap, not a zero**; confirm against `github_issues` before reporting "no issue activity".
+
+### Popularity metrics lag the freshest source
+
+`project_popularity` and `technical_fork` still read stars/forks from SPARQL and are **stale by a wide margin**. For `Biohub/esm` on 2026-07-22, CHAOSS reported **2343 stars / 289 forks** while the new `github_repositories` tracker reported **2861 / 366 — exactly matching the live GitHub API**. Until the metric is rewired, prefer the tracker for current popularity figures and treat these two cards as historical.
+
+### `0.0 d` means "under an hour", not "instantly"
+
+`cr_duration` and `pr_time_to_close` are **medians in days, rendered to one decimal**. On `Biohub/esm` the median merge time is 0.023 days (~33 minutes), so it displays as `0.0 d` even though the mean is 8.9 days (p95 = 7.9). Don't read `0.0 d` as missing data or as instant merges — render sub-day medians in hours, or the card misleads.
+
+### Snapshot / auth notes
+
+- SPARQL traces in `--include traces` query `GRAPH <https://open-pulse.epfl.ch/graph/2026-05/hybrid>` (see `query-sparql` named-graph convention). `test_coverage` remains sparse.
 - Repos are **GitHub-only**: `repo <owner> <repo>` → `/repositories/github.com/...`.
 - Projects are discipline/topic buckets of repos. **The set and count change over time, so always read it from `projects` — never hardcode a number.** At time of writing the largest are `info-eng` (~109 repos), `bioeng` (~95), `stats` (~63), with domain-relevant ones like `protein_ai_ecosystem` (~26), `bio` (~42), `chem` (~10). Use the exact `project` slug returned by `projects` (e.g. `protein_ai_ecosystem`, not `protein-ai`). `project-repos <project>` returns the project header plus both a `metrics[]` summary and a `repositories[]` list.
 - A browsable UI to explore first: `https://openpulse.epfl.ch/chaoss` (same auth).
