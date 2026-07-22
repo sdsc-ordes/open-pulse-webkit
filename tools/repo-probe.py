@@ -22,6 +22,7 @@ import argparse
 import base64
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -68,7 +69,7 @@ def call(path: str, *, body=None, method="POST", accept="application/json", form
         raise RuntimeError(f"http {e.code}: {e.read()[:200].decode(errors='replace')}") from None
     except urllib.error.URLError as e:
         raise RuntimeError(f"network error: {e.reason}") from None
-    except TimeoutError:
+    except (TimeoutError, socket.timeout):
         raise RuntimeError(f"timed out after {TIMEOUT}s (hub service may be restarting)") from None
 
 
@@ -153,7 +154,8 @@ def probe_opensearch(repo_url: str, index="git_demo_enriched") -> dict:
         "query": {"wildcard": {"repo_name": f"*/{slug}*"}},
         "aggs": {"names": {"terms": {"field": "repo_name", "size": 20}}}}})
     aliases = [r["names"] for r in rows(found)]
-    mine = [a for a in aliases if a.rstrip(".git").lower().endswith(repo_url.split("github.com/")[-1].lower())]
+    stripped = [a[:-4] if a.endswith(".git") else a for a in aliases]
+    mine = [a for a, s in zip(aliases, stripped) if s.lower().endswith(repo_url.split("github.com/")[-1].lower())]
     if not mine:
         return {"aliases_seen": aliases, "matched": [], "stats": None}
 

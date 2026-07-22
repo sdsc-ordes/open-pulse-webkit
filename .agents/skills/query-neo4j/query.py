@@ -22,6 +22,7 @@ import base64
 import json
 import os
 import re
+import socket
 import sys
 import urllib.error
 import urllib.request
@@ -115,7 +116,7 @@ def main() -> int:
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
         return 1
-    except TimeoutError:
+    except (TimeoutError, socket.timeout):
         print("network error: request timed out", file=sys.stderr)
         return 1
 

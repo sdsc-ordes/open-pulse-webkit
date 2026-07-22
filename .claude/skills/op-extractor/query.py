@@ -44,6 +44,7 @@ import argparse
 import base64
 import json
 import os
+import socket
 import sys
 import urllib.error
 import urllib.parse
@@ -94,7 +95,7 @@ def request(method: str, path: str, params=None, body=None, admin=False, raw=Fal
     except urllib.error.URLError as e:
         print(f"network error: {e.reason}", file=sys.stderr)
         return 1
-    except TimeoutError:
+    except (TimeoutError, socket.timeout):
         print("network error: request timed out", file=sys.stderr)
         return 1
     if raw:
