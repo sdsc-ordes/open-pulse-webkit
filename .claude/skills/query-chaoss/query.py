@@ -136,9 +136,9 @@ WINDOW_BUCKETS = (30, 90, 180, 365, 730, 1825, 3650)
 def build_query(args: argparse.Namespace) -> dict[str, str]:
     q: dict[str, str] = {}
     if args.window is not None:
-        # The API 422s outside 7–3650 and snaps upward inside it. Fail fast
-        # locally with a useful message, and warn when the effective window
-        # won't be the one that was asked for.
+        # The API 422s outside 7–3650 and snaps to the nearest bucket inside
+        # it (ties round down). Fail fast locally with a useful message, and
+        # warn when the effective window won't be the one that was asked for.
         if not WINDOW_MIN <= args.window <= WINDOW_MAX:
             print(f"error: --window must be between {WINDOW_MIN} and {WINDOW_MAX} days, got {args.window}",
                   file=sys.stderr)

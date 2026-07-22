@@ -137,6 +137,10 @@ async function main() {
 			console.error(`error: DSL body is not valid JSON: ${e.message}`);
 			process.exit(2);
 		}
+		if (typeof dslBody !== 'object' || dslBody === null || Array.isArray(dslBody)) {
+			console.error(`error: DSL body must be a JSON object, got ${Array.isArray(dslBody) ? 'array' : typeof dslBody}`);
+			process.exit(2);
+		}
 		if ('index' in dslBody) {
 			console.error(`warning: DSL body already sets "index": '${dslBody.index}' — overriding it with --dsl '${index}'`);
 		}

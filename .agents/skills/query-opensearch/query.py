@@ -133,6 +133,9 @@ def main() -> int:
         except json.JSONDecodeError as e:
             print(f"error: DSL body is not valid JSON: {e}", file=sys.stderr)
             return 2
+        if not isinstance(dsl_body, dict):
+            print(f"error: DSL body must be a JSON object, got {type(dsl_body).__name__}", file=sys.stderr)
+            return 2
         if "index" in dsl_body:
             print(f"warning: DSL body already sets \"index\": {dsl_body['index']!r} — "
                   f"overriding it with --dsl {args.dsl!r}", file=sys.stderr)

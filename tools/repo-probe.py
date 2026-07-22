@@ -22,6 +22,7 @@ import argparse
 import base64
 import json
 import os
+import re
 import socket
 import sys
 import urllib.error
@@ -30,6 +31,7 @@ import urllib.request
 from pathlib import Path
 
 TIMEOUT = 90
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 
 
 def load_dotenv() -> None:
@@ -98,6 +100,12 @@ def normalize_repo_arg(raw: str) -> tuple[str, str]:
             f"could not read an owner/name pair from {raw!r} — "
             "expected 'owner/name' or 'https://github.com/owner/name'"
         )
+    for part in parts:
+        if not _SLUG_RE.match(part):
+            raise ValueError(
+                f"invalid owner/name {part!r} in {raw!r} — "
+                "expected only letters, digits, '-', '_', '.'"
+            )
     return parts[0], parts[1]
 
 
