@@ -76,12 +76,6 @@ The last command loads the freshly installed skills into your current session �
 
 **Claude Desktop (app).** Plugins are added through the **Directory** panel, not the chat box:
 
-1. Click the **+** button next to the message box, then choose **Add plugins…** — this opens the Directory straight to the **Plugins** tab.
-2. Click the **+** next to *Sort by* → **Add marketplace** → enter `sdsc-ordes/open-pulse-webkit` as the repository → **Add**.
-3. A new **Code** tab appears next to *Partners* — open it, then open the **open-pulse** group inside it.
-4. Click **Open Pulse WebKit** (by SDSC ORDES) to open its detail page, then click **Install**.
-5. A toast confirms *"Open Pulse WebKit is installed and ready to use."* — the plugin's detail page now lists its 12 skills (`/frontend-dev`, `/new-dashboard`, `/op-collections`, …) and its `playwright` connector.
-
 ![Installing the Open Pulse WebKit plugin in Claude Desktop](.github/assets/claude-desktop-plugin-install.gif)
 
 **2. Build your dashboard.** Type:
