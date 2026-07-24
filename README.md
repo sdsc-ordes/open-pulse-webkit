@@ -32,7 +32,7 @@ Pick **one** per project (combining them loads every skill twice), then follow t
 cp .env.example .env
 ```
 
-Open `.env` in your own editor and replace every `xxxxxxxx` placeholder with the real values you got. **Never paste credentials into the chat with your AI agent** — it only needs to know the file exists and will never ask for the values; if a credential does end up in a chat, treat it as exposed and ask for a replacement. (`.env` is git-ignored — never commit it.)
+Everything goes through one HTTPS gateway, so there's really just one line to fill in: open `.env` in your own editor and replace the placeholder in `OPENPULSE_AUTH` with the reader token you got — that single pair (paired with the already-filled-in `OPENPULSE_ENDPOINT`) covers Neo4j, SPARQL, OpenSearch, and the CHAOSS metrics API. Add `OPENPULSE_ADMIN_AUTH` too if you'll run crawls or extractions. **Never paste credentials into the chat with your AI agent** — it only needs to know the file exists and will never ask for the values; if a credential does end up in a chat, treat it as exposed and ask for a replacement. (`.env` is git-ignored — never commit it.)
 
 **3. Check the connection.**
 
@@ -84,7 +84,7 @@ The last command loads the freshly installed skills into your current session �
 /open-pulse:new-dashboard
 ```
 
-The wizard sets up your project first — it creates the folders and the `.env.example` template, then tells you exactly which credential goes where. Fill `.env` in your own editor; **never paste credentials into the chat**. Once your credentials check out, it interviews you, verifies the data exists for your scope, writes a one-page plan for your approval, then builds and verifies the app in a real browser.
+The wizard sets up your project first — it creates the folders and the `.env.example` template, then tells you exactly which token goes where (usually just the one `OPENPULSE_AUTH` reader token — everything is reached through the same gateway). Fill `.env` in your own editor; **never paste credentials into the chat**. Once your credentials check out, it interviews you, verifies the data exists for your scope, writes a one-page plan for your approval, then builds and verifies the app in a real browser.
 
 **3. See it running.**
 
