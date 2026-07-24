@@ -18,7 +18,7 @@
 ### Two ways to install
 
 - **Option A — copy the template** *(recommended)*: start a new dashboard repo from scratch. You get the full kit — skills, agent docs, design system, devcontainer, GitHub Pages publishing path.
-- **Option B — install the plugin** *(Claude Code only)*: add the same skills to a project you already have.
+- **Option B — install the plugin**: add the same skills to a project you already have, from Claude Code *or* Claude Desktop.
 
 Pick **one** per project (combining them loads every skill twice), then follow that option's steps below.
 
@@ -60,9 +60,11 @@ npm run dev
 
 Open the printed URL in your browser.
 
-### Option B — install the plugin (Claude Code only)
+### Option B — install the plugin
 
-**1. Install.** In your Claude Code project, run:
+**1. Install.** How you install depends on which app you're using — pick your tab:
+
+**Claude Code (terminal).** In your project, run:
 
 ```
 /plugin marketplace add sdsc-ordes/open-pulse-webkit
@@ -70,7 +72,11 @@ Open the printed URL in your browser.
 /reload-plugins
 ```
 
-The last command loads the freshly installed skills into your current session — needed once after installing; no restart required.
+The last command loads the freshly installed skills into your current session — needed once after installing; no restart required. Note that `/plugin` is a Claude Code command — typing it into Claude Desktop's chat box returns *"isn't a recognized command here"*, because Desktop installs plugins through its UI instead (see below).
+
+**Claude Desktop (app).** Plugins are added through the **Directory** panel, not the chat box:
+
+![Installing the Open Pulse WebKit plugin in Claude Desktop](.github/assets/claude-desktop-plugin-install.gif)
 
 **2. Build your dashboard.** Type:
 
